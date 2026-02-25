@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
   getFinishedGoods,
@@ -9,6 +10,7 @@ import {
   getDemandPlans,
   addDemandPlan,
   cancelDemandPlan,
+  createWorkOrderFromDemandPlan,
 } from "@/lib/firestore";
 
 // Returns the blank form state. Extracted into a function so we can call it
@@ -23,7 +25,8 @@ const emptyFormData = () => ({
 // The main Demand Planning page.
 // Shows a planning form at the top and a table of demand plans below.
 export default function DemandPage() {
-  const { user } = useAuth();
+  const { user }   = useAuth();
+  const router     = useRouter();
 
   // ─── Fetched data ────────────────────────────────────────────────────────
   const [demandPlans,   setDemandPlans]   = useState([]);
@@ -32,11 +35,14 @@ export default function DemandPage() {
   const [loading,       setLoading]       = useState(true);
 
   // ─── UI state ────────────────────────────────────────────────────────────
-  // showAll toggles between "open plans only" and "all plans including cancelled".
-  const [showAll,      setShowAll]      = useState(false);
-  const [submitting,   setSubmitting]   = useState(false);
-  const [cancellingId, setCancellingId] = useState(null);
-  const [error,        setError]        = useState(null);
+  // showAll toggles between hiding cancelled plans and showing everything.
+  const [showAll,                  setShowAll]                  = useState(false);
+  const [submitting,               setSubmitting]               = useState(false);
+  const [cancellingId,             setCancellingId]             = useState(null);
+  // Tracks which plan is mid-flight for work order creation so we can show
+  // a "Creating..." loading state on that row's button.
+  const [creatingWorkOrderForId,   setCreatingWorkOrderForId]   = useState(null);
+  const [error,                    setError]                    = useState(null);
 
   // ─── Form state ──────────────────────────────────────────────────────────
   // Only the fields the user directly controls are stored in state.
@@ -195,11 +201,34 @@ export default function DemandPage() {
     }
   };
 
+  // Creates a work order from a demand plan and navigates to /work-orders.
+  // Uses an atomic batch write in Firestore — either the work order is created
+  // AND the plan is marked "fulfilled", or neither happens.
+  // router.push() is a client-side navigation (no page reload) that fires only
+  // after the async write succeeds. If the write throws, we show an error alert
+  // and stay on this page.
+  const handleCreateWorkOrder = async (plan) => {
+    setCreatingWorkOrderForId(plan.id);
+    try {
+      await createWorkOrderFromDemandPlan(plan, user?.email ?? "");
+      // Navigate to the work orders page. The new work order is already in
+      // Firestore, so the work orders page will fetch and display it on load.
+      router.push("/work-orders");
+    } catch (err) {
+      console.error("Failed to create work order from demand plan:", err);
+      window.alert("Failed to create work order. Please try again.");
+    } finally {
+      setCreatingWorkOrderForId(null);
+    }
+  };
+
   // ─── Table filtering ─────────────────────────────────────────────────────
-  // When showAll is false, hide cancelled plans to reduce noise.
+  // When showAll is false, hide only cancelled plans.
+  // Fulfilled plans stay visible so the baker can see which demand plans
+  // have already been converted to work orders.
   const visiblePlans = showAll
     ? demandPlans
-    : demandPlans.filter((p) => p.status === "open");
+    : demandPlans.filter((p) => p.status !== "cancelled");
 
   // ─── Date formatting ─────────────────────────────────────────────────────
   // Converts the stored "YYYY-MM-DD" string to a more readable "MM/DD/YYYY".
@@ -465,7 +494,9 @@ export default function DemandPage() {
                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                           isCancelled
                             ? "bg-stone-100 text-stone-500"
-                            : "bg-amber-100 text-amber-800"
+                            : plan.status === "fulfilled"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-amber-100 text-amber-800"
                         }`}>
                           {plan.status}
                         </span>
@@ -475,21 +506,20 @@ export default function DemandPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
 
-                          {/* Create Work Order — Phase E placeholder.
-                              `group` on the wrapper div lets the tooltip respond
-                              to hover on the whole cell area, not just the button. */}
-                          <div className="relative group">
+                          {/* Create Work Order — only available on open plans.
+                              Fulfilled plans already have a work order; the status
+                              badge makes that clear so no button is needed. */}
+                          {plan.status === "open" && (
                             <button
-                              disabled
-                              className="text-sm font-medium text-stone-300 cursor-not-allowed"
+                              onClick={() => handleCreateWorkOrder(plan)}
+                              disabled={creatingWorkOrderForId !== null}
+                              className="text-sm font-medium text-amber-600 hover:text-amber-800 disabled:opacity-40 disabled:cursor-not-allowed"
                             >
-                              Work Order
+                              {creatingWorkOrderForId === plan.id
+                                ? "Creating..."
+                                : "Work Order"}
                             </button>
-                            {/* CSS-only tooltip — visible on hover via group-hover */}
-                            <div className="absolute bottom-full left-0 mb-1.5 hidden group-hover:block w-max max-w-[160px] rounded bg-stone-800 text-white text-xs px-2 py-1 z-10 pointer-events-none">
-                              Coming in Phase E
-                            </div>
-                          </div>
+                          )}
 
                           {/* Cancel — only shown on open plans */}
                           {!isCancelled && (
