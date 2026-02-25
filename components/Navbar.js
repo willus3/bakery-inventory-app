@@ -13,6 +13,8 @@ const NAV_LINKS = [
   { label: "Ingredients",    href: "/ingredients" },
   { label: "Finished Goods", href: "/finished-goods" },
   { label: "Recipes",        href: "/recipes" },
+  { label: "Demand",         href: "/demand" },
+  { label: "Work Orders",    href: "/work-orders" },
   { label: "Restocking",     href: "/restocking" },
 ];
 
