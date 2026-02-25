@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 // The navigation links for the whole app, defined once here.
 // Each entry has a label (what the user sees) and an href (the route it links to).
@@ -28,6 +29,7 @@ const isActive = (href, pathname) => {
 // On mobile: a compact bar with a hamburger button that reveals a dropdown.
 export default function Navbar() {
   const pathname = usePathname();
+  const { user, signOut } = useAuth();
 
   // Controls whether the mobile menu is open or closed.
   const [isOpen, setIsOpen] = useState(false);
@@ -59,6 +61,17 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+
+            {/* Only show the sign-out button when a user is logged in.
+                Hidden on the login page where there's no session yet. */}
+            {user && (
+              <button
+                onClick={signOut}
+                className="ml-2 px-3 py-1.5 rounded-md text-sm font-medium text-stone-500 hover:text-stone-800 hover:bg-stone-100 transition-colors"
+              >
+                Sign out
+              </button>
+            )}
           </div>
 
           {/* Hamburger button — visible on mobile only */}
@@ -101,6 +114,16 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+
+            {/* Mobile sign-out button — same conditional as desktop */}
+            {user && (
+              <button
+                onClick={() => { signOut(); setIsOpen(false); }}
+                className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-stone-500 hover:text-stone-800 hover:bg-stone-100 transition-colors"
+              >
+                Sign out
+              </button>
+            )}
           </div>
         )}
 
