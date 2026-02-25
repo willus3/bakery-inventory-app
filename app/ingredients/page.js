@@ -6,7 +6,7 @@ import { getIngredients, addIngredient, updateIngredient, deleteIngredient } fro
 
 // The fixed list of unit options for the dropdown.
 // Defined outside the component so it's created once, not on every render.
-const UNIT_OPTIONS = ["lbs", "oz", "kg", "g", "cups", "units"];
+const UNIT_OPTIONS = ["g", "kg", "oz", "lbs", "ml", "L", "cups", "units", "dozen", "trays"];
 
 // The main Ingredients page.
 // Displays all ingredients in a table and includes a form to add new ones.
@@ -211,7 +211,7 @@ export default function IngredientsPage() {
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-12">
-        <p className="text-stone-400 text-sm">Loading ingredients...</p>
+        <p className="text-stone-500 text-sm">Loading ingredients...</p>
       </div>
     );
   }
@@ -225,14 +225,14 @@ export default function IngredientsPage() {
       {/* ── Page header ── */}
       <div>
         <h1 className="text-2xl font-semibold text-stone-800">Ingredients</h1>
-        <p className="text-sm text-stone-400 mt-1">
+        <p className="text-sm text-stone-500 mt-1">
           {ingredients.length} ingredient{ingredients.length !== 1 ? "s" : ""} total
         </p>
       </div>
 
       {/* ── Ingredients table (or empty message) ── */}
       {ingredients.length === 0 ? (
-        <p className="text-stone-400 text-sm">No ingredients yet. Add one below.</p>
+        <p className="text-stone-500 text-sm">No ingredients yet. Add one below.</p>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-stone-200">
           <table className="w-full text-sm text-left">
@@ -304,13 +304,13 @@ export default function IngredientsPage() {
                       <td className="px-4 py-2 flex gap-3">
                         <button
                           onClick={() => handleEditSave(item.id)}
-                          className="text-sm font-medium text-amber-600 hover:text-amber-800"
+                          className="text-sm font-medium text-amber-700 hover:text-amber-900"
                         >
                           Save
                         </button>
                         <button
                           onClick={handleEditCancel}
-                          className="text-sm font-medium text-stone-400 hover:text-stone-600"
+                          className="text-sm font-medium text-stone-500 hover:text-stone-700"
                         >
                           Cancel
                         </button>
@@ -327,7 +327,7 @@ export default function IngredientsPage() {
                     <td className="px-4 py-3 font-medium text-stone-800">{item.name}</td>
                     <td className="px-4 py-3 text-stone-500">{item.unit}</td>
                     <td className="px-4 py-3">
-                      <span className={isLow ? "text-rose-600 font-semibold" : "text-stone-700"}>
+                      <span className={isLow ? "text-rose-700 font-semibold" : "text-stone-700"}>
                         {item.currentStock}
                       </span>
                       {isLow && (
@@ -459,7 +459,7 @@ export default function IngredientsPage() {
             disabled={submitting}
             // `disabled` grays out the button and blocks clicks while saving.
             // The opacity and cursor classes reinforce visually that it's inactive.
-            className="rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-stone-900 hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {submitting ? "Adding..." : "Add Ingredient"}
           </button>

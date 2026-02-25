@@ -179,7 +179,7 @@ export default function RestockingPage() {
       {/* ── Page header ── */}
       <div>
         <h1 className="text-2xl font-semibold text-stone-800">Restocking</h1>
-        <p className="text-sm text-stone-400 mt-1">Log a restock event and view history</p>
+        <p className="text-sm text-stone-500 mt-1">Log a restock event and view history</p>
       </div>
 
       {/* ── Log Restock form ── */}
@@ -258,7 +258,7 @@ export default function RestockingPage() {
             {/* Notes */}
             <div>
               <label htmlFor="notes" className="block text-sm font-medium text-stone-700 mb-1">
-                Notes <span className="text-stone-400 font-normal">(optional)</span>
+                Notes <span className="text-stone-500 font-normal">(optional)</span>
               </label>
               <input
                 id="notes"
@@ -279,7 +279,7 @@ export default function RestockingPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-stone-900 hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {submitting ? "Saving..." : "Log Restock"}
           </button>
@@ -292,9 +292,9 @@ export default function RestockingPage() {
         <h2 className="text-lg font-semibold text-stone-800 mb-4">History</h2>
 
         {loading ? (
-          <p className="text-stone-400 text-sm">Loading history...</p>
+          <p className="text-stone-500 text-sm">Loading history...</p>
         ) : records.length === 0 ? (
-          <p className="text-stone-400 text-sm">No restocking records yet.</p>
+          <p className="text-stone-500 text-sm">No restocking records yet.</p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-stone-200">
             <table className="w-full text-sm text-left">
@@ -324,7 +324,7 @@ export default function RestockingPage() {
                     <td className="px-4 py-3 text-stone-700">
                       {record.quantityAdded}
                     </td>
-                    <td className="px-4 py-3 text-stone-400">
+                    <td className="px-4 py-3 text-stone-500">
                       {/* Show the notes text, or a dash if none were provided */}
                       {record.notes || "—"}
                     </td>

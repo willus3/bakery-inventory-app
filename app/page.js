@@ -82,7 +82,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-12">
-        <p className="text-stone-400 text-sm">Loading dashboard...</p>
+        <p className="text-stone-500 text-sm">Loading dashboard...</p>
       </div>
     );
   }
@@ -103,7 +103,7 @@ export default function DashboardPage() {
       {/* ── Page header ── */}
       <div>
         <h1 className="text-2xl font-semibold text-stone-800">Dashboard</h1>
-        <p className="text-sm text-stone-400 mt-1">Overview of your current inventory</p>
+        <p className="text-sm text-stone-500 mt-1">Overview of your current inventory</p>
       </div>
 
       {/* ── Summary cards ── */}
@@ -113,18 +113,18 @@ export default function DashboardPage() {
           href="/ingredients"
           className="rounded-lg border border-stone-200 bg-white p-5 hover:border-stone-300 hover:bg-stone-50 transition-colors"
         >
-          <p className="text-xs font-medium text-stone-400 uppercase tracking-wider">Ingredients</p>
+          <p className="text-xs font-medium text-stone-500 uppercase tracking-wider">Ingredients</p>
           <p className="mt-1 text-3xl font-semibold text-stone-800">{ingredients.length}</p>
-          <p className="mt-1 text-xs text-stone-400">items tracked</p>
+          <p className="mt-1 text-xs text-stone-500">items tracked</p>
         </Link>
 
         <Link
           href="/finished-goods"
           className="rounded-lg border border-stone-200 bg-white p-5 hover:border-stone-300 hover:bg-stone-50 transition-colors"
         >
-          <p className="text-xs font-medium text-stone-400 uppercase tracking-wider">Finished Goods</p>
+          <p className="text-xs font-medium text-stone-500 uppercase tracking-wider">Finished Goods</p>
           <p className="mt-1 text-3xl font-semibold text-stone-800">{finishedGoods.length}</p>
-          <p className="mt-1 text-xs text-stone-400">items tracked</p>
+          <p className="mt-1 text-xs text-stone-500">items tracked</p>
         </Link>
 
       </div>
@@ -144,10 +144,10 @@ export default function DashboardPage() {
 
               <thead className="bg-rose-50 border-b border-rose-200">
                 <tr>
-                  <th className="px-4 py-3 text-xs font-medium text-rose-400 uppercase tracking-wider">Item</th>
-                  <th className="px-4 py-3 text-xs font-medium text-rose-400 uppercase tracking-wider">Type</th>
-                  <th className="px-4 py-3 text-xs font-medium text-rose-400 uppercase tracking-wider">In Stock</th>
-                  <th className="px-4 py-3 text-xs font-medium text-rose-400 uppercase tracking-wider">Threshold</th>
+                  <th className="px-4 py-3 text-xs font-medium text-rose-700 uppercase tracking-wider">Item</th>
+                  <th className="px-4 py-3 text-xs font-medium text-rose-700 uppercase tracking-wider">Type</th>
+                  <th className="px-4 py-3 text-xs font-medium text-rose-700 uppercase tracking-wider">In Stock</th>
+                  <th className="px-4 py-3 text-xs font-medium text-rose-700 uppercase tracking-wider">Threshold</th>
                 </tr>
               </thead>
 
@@ -156,7 +156,7 @@ export default function DashboardPage() {
                   <tr key={`${item.itemType}-${item.id}`} className="bg-rose-50">
                     <td className="px-4 py-3 font-medium text-stone-800">{item.name}</td>
                     <td className="px-4 py-3 text-stone-500">{item.itemType}</td>
-                    <td className="px-4 py-3 font-semibold text-rose-600">{item.currentStock} {item.unit}</td>
+                    <td className="px-4 py-3 font-semibold text-rose-700">{item.currentStock} {item.unit}</td>
                     <td className="px-4 py-3 text-stone-500">{item.lowStockThreshold} {item.unit}</td>
                   </tr>
                 ))}
@@ -171,13 +171,13 @@ export default function DashboardPage() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-stone-800">Recent Restocking</h2>
-          <Link href="/restocking" className="text-sm text-amber-600 hover:text-amber-800 font-medium">
+          <Link href="/restocking" className="text-sm text-amber-700 hover:text-amber-900 font-medium">
             View all
           </Link>
         </div>
 
         {recentRecords.length === 0 ? (
-          <p className="text-stone-400 text-sm">No restocking records yet.</p>
+          <p className="text-stone-500 text-sm">No restocking records yet.</p>
         ) : (
           <div className="rounded-lg border border-stone-200 overflow-hidden">
             <ul className="divide-y divide-stone-100 bg-white">
@@ -185,14 +185,14 @@ export default function DashboardPage() {
                 <li key={record.id} className="px-4 py-3 flex items-center justify-between hover:bg-stone-50">
                   <div>
                     <span className="text-sm font-medium text-stone-800">{record.itemName}</span>
-                    <span className="ml-2 text-xs text-stone-400">{record.itemType === "ingredient" ? "Ingredient" : "Finished Good"}</span>
+                    <span className="ml-2 text-xs text-stone-500">{record.itemType === "ingredient" ? "Ingredient" : "Finished Good"}</span>
                     {record.notes && (
-                      <p className="text-xs text-stone-400 mt-0.5">{record.notes}</p>
+                      <p className="text-xs text-stone-500 mt-0.5">{record.notes}</p>
                     )}
                   </div>
                   <div className="text-right shrink-0 ml-4">
                     <p className="text-sm font-medium text-stone-700">+{record.quantityAdded}</p>
-                    <p className="text-xs text-stone-400">{formatDate(record.createdAt)}</p>
+                    <p className="text-xs text-stone-500">{formatDate(record.createdAt)}</p>
                   </div>
                 </li>
               ))}
