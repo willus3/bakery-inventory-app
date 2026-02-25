@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { label: "Dashboard",      href: "/" },
   { label: "Ingredients",    href: "/ingredients" },
   { label: "Finished Goods", href: "/finished-goods" },
+  { label: "Recipes",        href: "/recipes" },
   { label: "Restocking",     href: "/restocking" },
 ];
 
