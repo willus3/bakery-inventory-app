@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
+  getIngredients,
   getFinishedGoods,
   getRecipes,
   getDemandPlans,
@@ -16,14 +17,17 @@ import {
 // Returns the blank form state. Extracted into a function so we can call it
 // both for the initial state and when resetting after a successful submit.
 const emptyFormData = () => ({
-  finishedGoodId: "",
+  customerName:    "",
+  customerContact: "",
+  pickupDateTime:  "",
+  paymentNotes:    "",
+  finishedGoodId:  "",
   targetQuantity:  "",
-  requiredBy:      "",
   notes:           "",
 });
 
-// The main Demand Planning page.
-// Shows a planning form at the top and a table of demand plans below.
+// The main Special Orders page.
+// Shows a new-order form at the top and a table of MTO customer orders below.
 export default function DemandPage() {
   const { user }   = useAuth();
   const router     = useRouter();
@@ -32,6 +36,7 @@ export default function DemandPage() {
   const [demandPlans,   setDemandPlans]   = useState([]);
   const [finishedGoods, setFinishedGoods] = useState([]);
   const [recipes,       setRecipes]       = useState([]);
+  const [ingredients,   setIngredients]   = useState([]);
   const [loading,       setLoading]       = useState(true);
 
   // ─── UI state ────────────────────────────────────────────────────────────
@@ -46,7 +51,7 @@ export default function DemandPage() {
 
   // ─── Form state ──────────────────────────────────────────────────────────
   // Only the fields the user directly controls are stored in state.
-  // All calculated values (shortfall, batchesRequired) are derived below.
+  // All calculated values (batchesRequired, ingredientCheck, etc.) are derived below.
   const [formData, setFormData] = useState(emptyFormData());
 
   // ─── Derived values (not stored in state) ────────────────────────────────
@@ -58,44 +63,64 @@ export default function DemandPage() {
   // finishedGoodId against the loaded arrays.
   const selectedGood   = finishedGoods.find((fg) => fg.id === formData.finishedGoodId) ?? null;
   const selectedRecipe = recipes.find((r) => r.finishedGoodId === formData.finishedGoodId) ?? null;
-  const currentStock   = selectedGood?.currentStock ?? null;
   const recipeYield    = selectedRecipe?.yieldQuantity ?? null;
 
   // Parse the target quantity input string to a number.
   // parseFloat("") returns NaN, so we fall back to 0 with the || operator.
   const targetQty = parseFloat(formData.targetQuantity) || 0;
 
-  // Shortfall: how many more units we need to produce.
-  // Never negative — if stock already covers the target, shortfall is 0.
-  const shortfall = currentStock !== null
-    ? Math.max(0, targetQty - currentStock)
-    : 0;
-
-  // batchesRequired: how many full batches the recipe must run to cover shortfall.
+  // batchesRequired: how many full batches needed to fill this order from scratch.
+  // MTO never offsets against shelf stock — we produce the full quantity every time.
   // null means "can't calculate" (no recipe found for this finished good).
   const batchesRequired = !recipeYield
     ? null
-    : shortfall === 0
-      ? 0
-      : Math.ceil(shortfall / recipeYield);
+    : Math.ceil(targetQty / recipeYield);
+
+  // totalYield: the actual units the recipe will produce across all batches.
+  // Because we always ceil batchesRequired, totalYield ≥ targetQty.
+  const totalYield = (batchesRequired ?? 0) * (recipeYield ?? 0);
+
+  // ingredientCheck: per-ingredient sufficiency check for the calculated batch count.
+  // Same derived-variable pattern used in the work-orders create form — recomputes
+  // on every render whenever targetQty or finishedGoodId changes.
+  // Empty array when no recipe is selected yet.
+  const ingredientCheck = !selectedRecipe ? [] : selectedRecipe.ingredients.map((ing) => {
+    const stockItem     = ingredients.find((i) => i.id === ing.ingredientId);
+    const stock         = stockItem?.currentStock ?? 0;
+    const totalRequired = (batchesRequired ?? 0) * ing.quantity;
+    const sufficient    = stock >= totalRequired;
+    return {
+      ...ing,
+      stock,
+      totalRequired,
+      sufficient,
+      shortfall: sufficient ? 0 : totalRequired - stock,
+    };
+  });
+
+  // True only when there is at least one ingredient and every one is covered.
+  const allIngredientsSufficient =
+    ingredientCheck.length > 0 && ingredientCheck.every((ic) => ic.sufficient);
 
   // ─── Initial data fetch ──────────────────────────────────────────────────
-  // Fetch all three collections in parallel. Promise.all means we fire all
-  // three requests at once instead of waiting for each one to finish before
-  // starting the next — roughly 3× faster on a cold load.
+  // Fetch all four collections in parallel. Promise.all means we fire all
+  // requests at once instead of waiting for each one to finish — roughly 4×
+  // faster on a cold load. Ingredients are needed for the real-time stock check.
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const [plansData, goodsData, recipesData] = await Promise.all([
+        const [plansData, goodsData, recipesData, ingredientsData] = await Promise.all([
           getDemandPlans(),
           getFinishedGoods(),
           getRecipes(),
+          getIngredients(),
         ]);
         setDemandPlans(plansData);
         setFinishedGoods(goodsData);
         setRecipes(recipesData);
+        setIngredients(ingredientsData);
       } catch (err) {
-        console.error("Failed to load demand planning data:", err);
+        console.error("Failed to load special orders data:", err);
       } finally {
         setLoading(false);
       }
@@ -106,7 +131,7 @@ export default function DemandPage() {
 
   // ─── Form handlers ───────────────────────────────────────────────────────
 
-  // Generic handler for the targetQuantity, requiredBy, and notes inputs.
+  // Generic handler for all plain text/number/datetime inputs.
   // Uses the input's `name` attribute to know which formData field to update.
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -125,6 +150,10 @@ export default function DemandPage() {
     e.preventDefault();
 
     // ── Validation ────────────────────────────────────────────────────────
+    if (!formData.customerName.trim()) {
+      setError("Customer name is required.");
+      return;
+    }
     if (!formData.finishedGoodId) {
       setError("Please select a finished good.");
       return;
@@ -133,8 +162,8 @@ export default function DemandPage() {
       setError("Target quantity must be greater than 0.");
       return;
     }
-    if (!formData.requiredBy) {
-      setError("Please set a required-by date.");
+    if (!formData.pickupDateTime) {
+      setError("Please set a pickup date and time.");
       return;
     }
     if (!selectedRecipe) {
@@ -150,18 +179,21 @@ export default function DemandPage() {
     // ── Build the plan object ─────────────────────────────────────────────
     // We snapshot the calculated values at the moment of creation so the
     // plan record remains accurate even if stock levels or the recipe change.
+    // Customer fields and orderType are added here for MTO orders.
     const planData = {
+      orderType:        "MTO",
+      customerName:     formData.customerName.trim(),
+      customerContact:  formData.customerContact.trim(),
+      pickupDateTime:   formData.pickupDateTime,   // stored as "YYYY-MM-DDThh:mm" string
+      paymentNotes:     formData.paymentNotes.trim(),
       finishedGoodId:   formData.finishedGoodId,
       finishedGoodName: selectedGood.name,
       targetQuantity:   parseFloat(formData.targetQuantity),
-      currentStock:     currentStock,
-      shortfall:        shortfall,
       batchesRequired:  batchesRequired ?? 0,
       recipeId:         selectedRecipe.id,
       recipeName:       selectedRecipe.name,
       recipeYield:      recipeYield,
       status:           "open",
-      requiredBy:       formData.requiredBy,    // stored as "YYYY-MM-DD" string
       notes:            formData.notes.trim(),
       createdBy:        user?.email ?? "",
     };
@@ -184,7 +216,7 @@ export default function DemandPage() {
   // Soft-cancels a plan after a confirmation prompt.
   const handleCancel = async (id, name) => {
     const confirmed = window.confirm(
-      `Cancel the demand plan for "${name}"? This cannot be undone.`
+      `Cancel the special order for "${name}"? This cannot be undone.`
     );
     if (!confirmed) return;
 
@@ -230,19 +262,25 @@ export default function DemandPage() {
     ? demandPlans
     : demandPlans.filter((p) => p.status !== "cancelled");
 
-  // ─── Date formatting ─────────────────────────────────────────────────────
-  // Converts the stored "YYYY-MM-DD" string to a more readable "MM/DD/YYYY".
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "—";
-    const [year, month, day] = dateStr.split("-");
-    return `${month}/${day}/${year}`;
+  // ─── Datetime formatting ──────────────────────────────────────────────────
+  // Converts a "YYYY-MM-DDThh:mm" datetime-local string to a readable format:
+  // "Feb 25, 9:00 AM". Uses the browser's local timezone (same as how the
+  // value was entered), so no UTC conversion surprises.
+  const formatPickup = (dtStr) => {
+    if (!dtStr) return "—";
+    return new Date(dtStr).toLocaleString("en-US", {
+      month: "short",
+      day:   "numeric",
+      hour:  "numeric",
+      minute: "2-digit",
+    });
   };
 
   // ─── Loading state ───────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-12">
-        <p className="text-stone-500 text-sm">Loading demand planning...</p>
+        <p className="text-stone-500 text-sm">Loading special orders...</p>
       </div>
     );
   }
@@ -253,19 +291,98 @@ export default function DemandPage() {
 
       {/* ── Page header ── */}
       <div>
-        <h1 className="text-2xl font-semibold text-stone-800">Demand Planning</h1>
+        <h1 className="text-2xl font-semibold text-stone-800">Special Orders</h1>
         <p className="text-sm text-stone-500 mt-1">
-          Set production targets and calculate how many batches to run.
+          Make-to-order customer orders — record the customer, calculate batches, and create a work order.
         </p>
       </div>
 
-      {/* ── Planning Form ── */}
+      {/* ── New Special Order Form ── */}
       <div className="border border-stone-200 rounded-lg p-6">
-        <h2 className="text-base font-semibold text-stone-800 mb-5">New Demand Plan</h2>
+        <h2 className="text-base font-semibold text-stone-800 mb-5">New Special Order</h2>
 
         <form onSubmit={handleSubmit} className="space-y-5">
 
-          {/* ── Row 1: Finished Good + Target Quantity ── */}
+          {/* ── Section 1: Customer info ── */}
+          {/* Customer name leads the form because MTO orders are organized by customer. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            {/* Customer Name */}
+            <div>
+              <label htmlFor="customerName" className="block text-sm font-medium text-stone-700 mb-1">
+                Customer Name <span className="text-rose-500">*</span>
+              </label>
+              <input
+                id="customerName"
+                name="customerName"
+                type="text"
+                value={formData.customerName}
+                onChange={handleChange}
+                placeholder="e.g. Jane Smith"
+                className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+              />
+            </div>
+
+            {/* Customer Contact */}
+            <div>
+              <label htmlFor="customerContact" className="block text-sm font-medium text-stone-700 mb-1">
+                Customer Contact{" "}
+                <span className="text-stone-400 font-normal">(optional)</span>
+              </label>
+              <input
+                id="customerContact"
+                name="customerContact"
+                type="text"
+                value={formData.customerContact}
+                onChange={handleChange}
+                placeholder="Phone or email"
+                className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+              />
+            </div>
+
+          </div>
+
+          {/* ── Row 2: Pickup Date/Time + Payment Notes ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            {/* Pickup Date & Time */}
+            <div>
+              <label htmlFor="pickupDateTime" className="block text-sm font-medium text-stone-700 mb-1">
+                Pickup Date &amp; Time <span className="text-rose-500">*</span>
+              </label>
+              <input
+                id="pickupDateTime"
+                name="pickupDateTime"
+                type="datetime-local"
+                value={formData.pickupDateTime}
+                onChange={handleChange}
+                className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+              />
+            </div>
+
+            {/* Payment Notes */}
+            <div>
+              <label htmlFor="paymentNotes" className="block text-sm font-medium text-stone-700 mb-1">
+                Payment Notes{" "}
+                <span className="text-stone-400 font-normal">(optional)</span>
+              </label>
+              <input
+                id="paymentNotes"
+                name="paymentNotes"
+                type="text"
+                value={formData.paymentNotes}
+                onChange={handleChange}
+                placeholder="e.g. Deposit paid"
+                className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+              />
+            </div>
+
+          </div>
+
+          {/* ── Divider between customer fields and product fields ── */}
+          <div className="border-t border-stone-100" />
+
+          {/* ── Row 3: Finished Good + Target Quantity ── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
             {/* Finished Good dropdown */}
@@ -286,16 +403,12 @@ export default function DemandPage() {
                 ))}
               </select>
 
-              {/* Stock + recipe info — appears after a finished good is selected */}
+              {/* Recipe info — appears after a finished good is selected.
+                  No "In stock" shown here because MTO always produces to order. */}
               {selectedGood && (
                 <p className="text-xs text-stone-500 mt-1.5">
-                  In stock:{" "}
-                  <span className="font-medium text-stone-700">
-                    {currentStock} {selectedGood.unit}
-                  </span>
                   {selectedRecipe ? (
                     <>
-                      {" "}·{" "}
                       Recipe:{" "}
                       <span className="font-medium text-stone-700">
                         {selectedRecipe.name}
@@ -305,7 +418,7 @@ export default function DemandPage() {
                       </span>
                     </>
                   ) : (
-                    <span className="text-rose-500"> · No active recipe found</span>
+                    <span className="text-rose-500">No active recipe found</span>
                   )}
                 </p>
               )}
@@ -332,24 +445,14 @@ export default function DemandPage() {
           </div>
 
           {/* ── Calculation strip ── */}
-          {/* Only rendered when a finished good is selected AND a target quantity
-              has been entered. Shows the four key numbers in one readable line.
-              These values recalculate instantly on every keystroke because they
-              are derived directly from formData — no useEffect needed. */}
+          {/* Rendered when a finished good is selected and a target quantity entered.
+              Shows Quantity, Batches needed, and Total yield — no shelf stock or
+              shortfall, because MTO always produces to order from scratch.
+              Values recalculate instantly on every keystroke (derived variables). */}
           {selectedGood && formData.targetQuantity && (
             <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm flex flex-wrap gap-x-1 gap-y-1 items-center">
-              <span className="font-medium text-stone-700">Target:</span>
+              <span className="font-medium text-stone-700">Quantity:</span>
               <span className="text-stone-800">{targetQty}</span>
-              <span className="mx-2 text-stone-400">|</span>
-
-              <span className="font-medium text-stone-700">In Stock:</span>
-              <span className="text-stone-800">{currentStock ?? "—"}</span>
-              <span className="mx-2 text-stone-400">|</span>
-
-              <span className="font-medium text-stone-700">Shortfall:</span>
-              <span className={shortfall > 0 ? "text-rose-600 font-semibold" : "text-stone-800"}>
-                {shortfall}
-              </span>
               <span className="mx-2 text-stone-400">|</span>
 
               <span className="font-medium text-stone-700">Batches needed:</span>
@@ -359,44 +462,94 @@ export default function DemandPage() {
                   : <span className="text-stone-400 font-normal">— <span className="text-xs">(no recipe)</span></span>
                 }
               </span>
+              <span className="mx-2 text-stone-400">|</span>
+
+              <span className="font-medium text-stone-700">Total yield:</span>
+              <span className="text-stone-800">
+                {totalYield > 0
+                  ? `${totalYield} ${selectedRecipe?.yieldUnit ?? ""}`
+                  : "—"
+                }
+              </span>
             </div>
           )}
 
-          {/* ── Row 2: Required By + Notes ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-            {/* Required By */}
+          {/* ── Ingredient availability check ── */}
+          {/* Shown when a recipe is selected and a target quantity is entered.
+              Updates in real time as targetQuantity changes — no useEffect needed
+              because ingredientCheck is a derived variable, not stored state.
+              Green row = sufficient stock. Rose row = short, shows shortfall. */}
+          {selectedRecipe && batchesRequired !== null && batchesRequired > 0 && ingredientCheck.length > 0 && (
             <div>
-              <label htmlFor="requiredBy" className="block text-sm font-medium text-stone-700 mb-1">
-                Required By <span className="text-rose-500">*</span>
-              </label>
-              <input
-                id="requiredBy"
-                name="requiredBy"
-                type="date"
-                value={formData.requiredBy}
-                onChange={handleChange}
-                className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
-              />
-            </div>
+              <p className="text-sm font-medium text-stone-700 mb-2">
+                Ingredients Required
+                <span className="ml-2 font-normal text-stone-400">
+                  ({batchesRequired} batch{batchesRequired !== 1 ? "es" : ""})
+                </span>
+              </p>
 
-            {/* Notes */}
-            <div>
-              <label htmlFor="notes" className="block text-sm font-medium text-stone-700 mb-1">
-                Notes{" "}
-                <span className="text-stone-400 font-normal">(optional)</span>
-              </label>
-              <input
-                id="notes"
-                name="notes"
-                type="text"
-                value={formData.notes}
-                onChange={handleChange}
-                placeholder="e.g. Weekend market order"
-                className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
-              />
-            </div>
+              <div className="rounded-md border border-stone-200 divide-y divide-stone-100 overflow-hidden">
+                {ingredientCheck.map((ic) => (
+                  <div
+                    key={ic.ingredientId}
+                    className={`flex items-center justify-between px-4 py-2.5 text-sm ${
+                      ic.sufficient ? "bg-white" : "bg-rose-50"
+                    }`}
+                  >
+                    {/* Ingredient name + sufficiency indicator */}
+                    <span className={`font-medium ${ic.sufficient ? "text-stone-700" : "text-rose-700"}`}>
+                      {ic.sufficient ? "✓" : "✗"} {ic.ingredientName}
+                    </span>
 
+                    {/* Need / Have / Short */}
+                    <span className="text-stone-500 text-xs text-right">
+                      Need{" "}
+                      <span className="font-medium text-stone-700">
+                        {ic.totalRequired} {ic.unit}
+                      </span>
+                      {" "}·{" "}
+                      Have{" "}
+                      <span className={`font-medium ${ic.sufficient ? "text-stone-700" : "text-rose-600"}`}>
+                        {ic.stock} {ic.unit}
+                      </span>
+                      {!ic.sufficient && (
+                        <span className="text-rose-600 font-medium">
+                          {" "}· Short {ic.shortfall} {ic.unit}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Summary line below the ingredient list */}
+              <p className="text-xs font-medium mt-2">
+                {allIngredientsSufficient ? (
+                  <span className="text-green-700">✓ All ingredients available</span>
+                ) : (
+                  <span className="text-rose-600">
+                    ⚠ Some ingredients are short — restock before creating a work order
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
+
+          {/* ── Row 4: Order Notes ── */}
+          <div>
+            <label htmlFor="notes" className="block text-sm font-medium text-stone-700 mb-1">
+              Order Notes{" "}
+              <span className="text-stone-400 font-normal">(optional)</span>
+            </label>
+            <input
+              id="notes"
+              name="notes"
+              type="text"
+              value={formData.notes}
+              onChange={handleChange}
+              placeholder="e.g. Nut-free, gluten-free packaging requested"
+              className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+            />
           </div>
 
           {/* Error message */}
@@ -410,19 +563,19 @@ export default function DemandPage() {
             disabled={submitting}
             className="rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-stone-900 hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {submitting ? "Creating..." : "Create Demand Plan"}
+            {submitting ? "Creating..." : "Create Special Order"}
           </button>
 
         </form>
       </div>
 
-      {/* ── Demand Plans Table ── */}
+      {/* ── Special Orders Table ── */}
       <div>
 
         {/* Table header + show-all toggle */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold text-stone-800">
-            Demand Plans
+            Special Orders
             {!showAll && (
               <span className="ml-2 text-sm font-normal text-stone-400">
                 (open only)
@@ -443,8 +596,8 @@ export default function DemandPage() {
         {visiblePlans.length === 0 ? (
           <p className="text-stone-500 text-sm">
             {showAll
-              ? "No demand plans yet. Create one above."
-              : "No open demand plans. Create one above."}
+              ? "No special orders yet. Create one above."
+              : "No open special orders. Create one above."}
           </p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-stone-200">
@@ -452,12 +605,11 @@ export default function DemandPage() {
 
               <thead className="bg-stone-50 border-b border-stone-200">
                 <tr>
+                  <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Customer</th>
                   <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Finished Good</th>
-                  <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Target</th>
-                  <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">In Stock</th>
-                  <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Shortfall</th>
+                  <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Qty</th>
                   <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Batches</th>
-                  <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Required By</th>
+                  <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Pickup</th>
                   <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Status</th>
                   <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -473,21 +625,15 @@ export default function DemandPage() {
                       key={plan.id}
                       className={isCancelled ? "opacity-50" : ""}
                     >
-                      {/* Finished Good name — strikethrough when cancelled */}
-                      <td className={`px-4 py-3 font-medium ${isCancelled ? "text-stone-400 line-through" : "text-stone-800"}`}>
-                        {plan.finishedGoodName}
+                      {/* Customer name — most prominent column, strikethrough when cancelled */}
+                      <td className={`px-4 py-3 font-semibold ${isCancelled ? "text-stone-400 line-through" : "text-stone-800"}`}>
+                        {plan.customerName || "—"}
                       </td>
 
+                      <td className="px-4 py-3 text-stone-600">{plan.finishedGoodName}</td>
                       <td className="px-4 py-3 text-stone-600">{plan.targetQuantity}</td>
-                      <td className="px-4 py-3 text-stone-600">{plan.currentStock}</td>
-
-                      {/* Shortfall in rose when non-zero and not cancelled */}
-                      <td className={`px-4 py-3 font-medium ${plan.shortfall > 0 && !isCancelled ? "text-rose-600" : "text-stone-600"}`}>
-                        {plan.shortfall}
-                      </td>
-
                       <td className="px-4 py-3 text-stone-600">{plan.batchesRequired}</td>
-                      <td className="px-4 py-3 text-stone-600">{formatDate(plan.requiredBy)}</td>
+                      <td className="px-4 py-3 text-stone-600">{formatPickup(plan.pickupDateTime)}</td>
 
                       {/* Status badge */}
                       <td className="px-4 py-3">
@@ -524,7 +670,7 @@ export default function DemandPage() {
                           {/* Cancel — only shown on open plans */}
                           {!isCancelled && (
                             <button
-                              onClick={() => handleCancel(plan.id, plan.finishedGoodName)}
+                              onClick={() => handleCancel(plan.id, plan.customerName || plan.finishedGoodName)}
                               disabled={isCancelling}
                               className="text-sm font-medium text-rose-500 hover:text-rose-700 disabled:opacity-40 disabled:cursor-not-allowed"
                             >

@@ -698,6 +698,16 @@ export default function WorkOrdersPage() {
                     <div>
                       <p className="font-semibold text-stone-800">{wo.recipeName}</p>
                       <p className="text-xs text-stone-500 mt-0.5">{wo.finishedGoodName}</p>
+                      {/* MTO customer line — shown only when the work order
+                          was created from a special (make-to-order) customer order */}
+                      {wo.customerName && (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-sm font-medium text-stone-700">{wo.customerName}</span>
+                          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800">
+                            MTO
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <span className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeClass}`}>
                       {statusLabel}
@@ -777,6 +787,7 @@ export default function WorkOrdersPage() {
 
               <thead className="bg-stone-50 border-b border-stone-200">
                 <tr>
+                  <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Customer</th>
                   <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Recipe</th>
                   <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Finished Good</th>
                   <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Ordered</th>
@@ -796,6 +807,22 @@ export default function WorkOrdersPage() {
 
                   return (
                     <tr key={wo.id} className={isCancelled ? "opacity-50" : ""}>
+
+                      {/* Customer — shows name + MTO badge for special orders, dash for standard */}
+                      <td className="px-4 py-3">
+                        {wo.customerName ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className={`font-medium ${isCancelled ? "text-stone-400 line-through" : "text-stone-800"}`}>
+                              {wo.customerName}
+                            </span>
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800">
+                              MTO
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-stone-400">—</span>
+                        )}
+                      </td>
 
                       <td className={`px-4 py-3 font-medium ${isCancelled ? "text-stone-400 line-through" : "text-stone-800"}`}>
                         {wo.recipeName}
