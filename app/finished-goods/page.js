@@ -53,6 +53,8 @@ export default function FinishedGoodsPage() {
       // If price is 0 (stored as the "not set" default), show blank in the input
       // so it doesn't look like the user intentionally set a $0 price.
       price: item.price || "",
+      // Pre-select the linked day-old product if one exists.
+      dayOldFinishedGoodId: item.dayOldFinishedGoodId || "",
     });
   };
 
@@ -71,12 +73,23 @@ export default function FinishedGoodsPage() {
   // Saves the edited row to Firestore and refreshes the list.
   const handleEditSave = async (id) => {
     try {
+      // Look up the name of the linked day-old product so we can denormalize it.
+      // Storing the name alongside the ID means the table can display it without
+      // a second lookup — same pattern used in restocking records.
+      const linkedDayOld = finishedGoods.find(
+        (fg) => fg.id === editFormData.dayOldFinishedGoodId
+      );
+
       await updateFinishedGood(id, {
         name: editFormData.name.trim(),
         unit: editFormData.unit,
         currentStock: parseFloat(editFormData.currentStock) || 0,
         lowStockThreshold: parseFloat(editFormData.lowStockThreshold) || 0,
         price: parseFloat(editFormData.price) || 0,
+        // Store both the ID (for lookups) and the name (for display).
+        // An empty string clears a previously linked product.
+        dayOldFinishedGoodId:   editFormData.dayOldFinishedGoodId || "",
+        dayOldFinishedGoodName: linkedDayOld?.name || "",
       });
 
       const updatedList = await getFinishedGoods();
@@ -210,6 +223,29 @@ export default function FinishedGoodsPage() {
                           onChange={handleEditChange}
                           className="w-full rounded border border-stone-300 px-2 py-1 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
                         />
+                        {/* Day-old link — only shown in edit mode, stacked below the name input */}
+                        <div className="mt-2">
+                          <label className="block text-xs text-stone-500 mb-1">
+                            Day-Old Version <span className="text-stone-400">(optional)</span>
+                          </label>
+                          <select
+                            name="dayOldFinishedGoodId"
+                            value={editFormData.dayOldFinishedGoodId}
+                            onChange={handleEditChange}
+                            className="w-full rounded border border-stone-300 px-2 py-1 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                          >
+                            <option value="">None</option>
+                            {/* Exclude the current item — a product can't be its own day-old version */}
+                            {finishedGoods
+                              .filter((fg) => fg.id !== item.id)
+                              .map((fg) => (
+                                <option key={fg.id} value={fg.id}>{fg.name}</option>
+                              ))}
+                          </select>
+                          <p className="text-xs text-stone-400 mt-1">
+                            If unsold stock is transferred to a day-old product at end of day, select it here.
+                          </p>
+                        </div>
                       </td>
                       <td className="px-4 py-2">
                         <select
@@ -278,7 +314,15 @@ export default function FinishedGoodsPage() {
                 // ── Read mode row ──────────────────────────────────────────
                 return (
                   <tr key={item.id} className={isLow ? "bg-rose-50" : "hover:bg-stone-50"}>
-                    <td className="px-4 py-3 font-medium text-stone-800">{item.name}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-stone-800">{item.name}</div>
+                      {/* Show the linked day-old product as a muted hint below the name */}
+                      {item.dayOldFinishedGoodName && (
+                        <div className="text-xs text-stone-400 mt-0.5">
+                          Day-old: {item.dayOldFinishedGoodName}
+                        </div>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-stone-500">{item.unit}</td>
                     <td className="px-4 py-3">
                       <span className={isLow ? "text-rose-700 font-semibold" : "text-stone-700"}>

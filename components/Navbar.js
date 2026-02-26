@@ -16,6 +16,8 @@ const NAV_LINKS = [
   { label: "Special Orders", href: "/demand" },
   { label: "Work Orders",    href: "/work-orders" },
   { label: "Sales",          href: "/sales" },
+  { label: "Purchasing",     href: "/purchasing" },
+  { label: "End of Day",     href: "/end-of-day" },
   { label: "Restocking",     href: "/restocking" },
 ];
 
