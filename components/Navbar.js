@@ -15,6 +15,7 @@ const NAV_LINKS = [
   { label: "Recipes",        href: "/recipes" },
   { label: "Special Orders", href: "/demand" },
   { label: "Work Orders",    href: "/work-orders" },
+  { label: "Weekly Plan",    href: "/weekly-plan" },
   { label: "Sales",          href: "/sales" },
   { label: "Purchasing",     href: "/purchasing" },
   { label: "End of Day",     href: "/end-of-day" },
