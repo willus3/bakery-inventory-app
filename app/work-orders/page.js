@@ -84,23 +84,7 @@ const getStatusInfo = (wo) => {
   }
 };
 
-// Formats a Date object to "YYYY-MM-DD" using local time methods.
-// Reuses the same approach as getTodayStr() so all date strings are consistent.
-const dateToStr = (d) => [
-  d.getFullYear(),
-  String(d.getMonth() + 1).padStart(2, "0"),
-  String(d.getDate()).padStart(2, "0"),
-].join("-");
 
-// Returns the Monday of the week containing `date` as "YYYY-MM-DD".
-// getDay() returns 0=Sun, 1=Mon...6=Sat. We subtract the right number of days
-// to land on Monday, treating Sunday as the end of the previous week (ISO week).
-const getMondayOfWeek = (date) => {
-  const d = new Date(date);
-  const day = d.getDay();
-  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
-  return dateToStr(d);
-};
 
 // Tab definitions for the All Work Orders section.
 // "All" tab removed — "All Time" date preset serves the same purpose.
@@ -111,14 +95,6 @@ const TABS = [
   { key: "cancelled",  label: "Cancelled" },
 ];
 
-// Date preset buttons shown above the status tabs.
-const DATE_PRESETS = [
-  { key: "today",     label: "Today" },
-  { key: "thisWeek",  label: "This Week" },
-  { key: "lastWeek",  label: "Last Week" },
-  { key: "thisMonth", label: "This Month" },
-  { key: "allTime",   label: "All Time" },
-];
 
 // Shared Tailwind classes for all text inputs and selects in the form.
 const inputCls =
@@ -137,8 +113,9 @@ export default function WorkOrdersPage() {
 
   // ── UI state ─────────────────────────────────────────────────────────────
   const [activeTab,        setActiveTab]        = useState("planned");
-  // Controls which date range preset is active. "allTime" = no date filter.
-  const [datePreset,       setDatePreset]       = useState("allTime");
+  // Date range filter. Empty string = no filter on that bound.
+  const [startDate,        setStartDate]        = useState("");
+  const [endDate,          setEndDate]          = useState("");
   const [showForm,         setShowForm]         = useState(false);
   // "create" | "edit" — controls which form is rendered in the form section
   const [formMode,         setFormMode]         = useState("create");
@@ -583,51 +560,17 @@ export default function WorkOrdersPage() {
     (wo) => isToday(wo.scheduledStart) || isOverdue(wo)
   );
 
-  // ── Date preset calculations ─────────────────────────────────────────────
-  // All strings use local time (same pattern as getTodayStr/isToday above).
-  // Computed fresh each render so they're always accurate if the page is
-  // left open overnight and the date rolls over.
-  const now            = new Date();
-  const todayStr       = getTodayStr();
-
-  // This week: Monday → Sunday of the current calendar week.
-  const mondayDate     = new Date(getMondayOfWeek(now));
-  const sundayDate     = new Date(mondayDate);
-  sundayDate.setDate(mondayDate.getDate() + 6);
-  const mondayStr      = dateToStr(mondayDate);
-  const sundayStr      = dateToStr(sundayDate);
-
-  // Last week: Monday → Sunday of the previous calendar week.
-  const lastMondayDate = new Date(mondayDate);
-  lastMondayDate.setDate(mondayDate.getDate() - 7);
-  const lastSundayDate = new Date(lastMondayDate);
-  lastSundayDate.setDate(lastMondayDate.getDate() + 6);
-  const lastMondayStr  = dateToStr(lastMondayDate);
-  const lastSundayStr  = dateToStr(lastSundayDate);
-
-  // This month: 1st → last day of current month.
-  // new Date(year, month + 1, 0) gives the last day of the current month.
-  const firstOfMonthStr = dateToStr(new Date(now.getFullYear(), now.getMonth(), 1));
-  const lastOfMonthStr  = dateToStr(new Date(now.getFullYear(), now.getMonth() + 1, 0));
-
-  // Filters workOrders by the selected date preset.
-  // scheduledStart is "YYYY-MM-DDThh:mm" — slicing to 10 chars gives the date
-  // portion for string comparison (ISO date strings sort lexicographically).
-  const dateFilteredWOs = (() => {
-    const d = (wo) => wo.scheduledStart ? wo.scheduledStart.slice(0, 10) : null;
-    switch (datePreset) {
-      case "today":
-        return workOrders.filter((wo) => d(wo) === todayStr);
-      case "thisWeek":
-        return workOrders.filter((wo) => { const s = d(wo); return s && s >= mondayStr && s <= sundayStr; });
-      case "lastWeek":
-        return workOrders.filter((wo) => { const s = d(wo); return s && s >= lastMondayStr && s <= lastSundayStr; });
-      case "thisMonth":
-        return workOrders.filter((wo) => { const s = d(wo); return s && s >= firstOfMonthStr && s <= lastOfMonthStr; });
-      default: // "allTime" — no date filter
-        return workOrders;
-    }
-  })();
+  // Filters workOrders by the startDate / endDate inputs.
+  // Both are "YYYY-MM-DD" strings from date inputs — same format as
+  // scheduledStart.slice(0,10), so plain string comparison works correctly.
+  // Empty string means that bound is unconstrained.
+  const dateFilteredWOs = workOrders.filter((wo) => {
+    const d = wo.scheduledStart ? wo.scheduledStart.slice(0, 10) : null;
+    if (!d) return !startDate && !endDate; // no scheduledStart: only show when no filter active
+    if (startDate && d < startDate) return false;
+    if (endDate   && d > endDate)   return false;
+    return true;
+  });
 
   // Count per status tab within the current date filter.
   // Used to show "Planned (3)" labels so the user can see what's behind each
@@ -842,21 +785,30 @@ export default function WorkOrdersPage() {
       <section>
         <h2 className="text-base font-semibold text-stone-800 mb-4">All Work Orders</h2>
 
-        {/* Date preset filter bar */}
-        <div className="flex gap-1 mb-3 flex-wrap">
-          {DATE_PRESETS.map((preset) => (
+        {/* Date range filter */}
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <span className="text-xs font-medium text-stone-500 shrink-0">Scheduled date</span>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="rounded-md border border-stone-300 px-2 py-1.5 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+          />
+          <span className="text-xs text-stone-400">to</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="rounded-md border border-stone-300 px-2 py-1.5 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+          />
+          {(startDate || endDate) && (
             <button
-              key={preset.key}
-              onClick={() => setDatePreset(preset.key)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                datePreset === preset.key
-                  ? "bg-amber-500 text-stone-900"
-                  : "text-stone-500 hover:text-stone-800 hover:bg-stone-100"
-              }`}
+              onClick={() => { setStartDate(""); setEndDate(""); }}
+              className="text-xs font-medium text-stone-400 hover:text-stone-700 transition-colors"
             >
-              {preset.label}
+              Clear
             </button>
-          ))}
+          )}
         </div>
 
         {/* Status tabs — counts reflect the active date preset */}
@@ -879,7 +831,7 @@ export default function WorkOrdersPage() {
         {filteredWorkOrders.length === 0 ? (
           <p className="text-stone-500 text-sm">
             No {TABS.find((t) => t.key === activeTab)?.label.toLowerCase()} work orders
-            {datePreset !== "allTime" ? " in this date range" : ""}.
+            {(startDate || endDate) ? " in this date range" : ""}.
           </p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-stone-200">
