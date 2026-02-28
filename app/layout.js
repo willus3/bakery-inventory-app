@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Bakery Inventory",
+  title: "Bakery MRP",
   description: "Ingredient and finished goods inventory management",
 };
 

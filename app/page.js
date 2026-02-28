@@ -18,7 +18,7 @@ import {
   getPurchaseOrders,
 } from "@/lib/firestore";
 
-const BAKERY_NAME = "The Bakery";
+const BAKERY_NAME = "Bakery MRP";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DATE UTILITIES
