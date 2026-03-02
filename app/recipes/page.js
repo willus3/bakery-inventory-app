@@ -73,6 +73,7 @@ export default function RecipesPage() {
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
   const [quickAddForm,      setQuickAddForm]      = useState({ name: "", unit: "units" });
   const [quickAddSaving,    setQuickAddSaving]    = useState(false);
+  const [quickAddError,     setQuickAddError]     = useState(null);
 
   // ─── Quick-add ingredient modal ───────────────────────────────────────────
   // quickAddIngredientRowIndex tracks which row triggered the modal so the
@@ -81,6 +82,7 @@ export default function RecipesPage() {
   const [quickAddIngredientForm,      setQuickAddIngredientForm]      = useState({ name: "", unit: "g", currentStock: 0 });
   const [quickAddIngredientSaving,    setQuickAddIngredientSaving]    = useState(false);
   const [quickAddIngredientRowIndex,  setQuickAddIngredientRowIndex]  = useState(null);
+  const [quickAddIngredientError,     setQuickAddIngredientError]     = useState(null);
 
   // ─── Initial data fetch ──────────────────────────────────────────────────
   // Fetch all three collections in parallel. Recipes is the primary data;
@@ -199,6 +201,18 @@ export default function RecipesPage() {
   // finished goods list, and auto-selects the new item in the recipe form.
   const handleQuickAddCreate = async () => {
     if (!quickAddForm.name.trim()) return;
+
+    // Duplicate name check against the already-loaded finishedGoods array.
+    const dupName = quickAddForm.name.trim().toLowerCase();
+    const isDuplicate = finishedGoods.some(
+      (fg) => fg.name.trim().toLowerCase() === dupName
+    );
+    if (isDuplicate) {
+      setQuickAddError(`A finished good named "${quickAddForm.name.trim()}" already exists.`);
+      return;
+    }
+    setQuickAddError(null);
+
     setQuickAddSaving(true);
     try {
       const docRef = await addFinishedGood({
@@ -282,6 +296,18 @@ export default function RecipesPage() {
   // ingredients list, and auto-selects the new item in the triggering row.
   const handleQuickAddIngredientCreate = async () => {
     if (!quickAddIngredientForm.name.trim()) return;
+
+    // Duplicate name check against the already-loaded ingredients array.
+    const dupName = quickAddIngredientForm.name.trim().toLowerCase();
+    const isDuplicate = ingredients.some(
+      (ing) => ing.name.trim().toLowerCase() === dupName
+    );
+    if (isDuplicate) {
+      setQuickAddIngredientError(`An ingredient named "${quickAddIngredientForm.name.trim()}" already exists.`);
+      return;
+    }
+    setQuickAddIngredientError(null);
+
     setQuickAddIngredientSaving(true);
     try {
       const docRef = await addIngredient({
@@ -565,7 +591,7 @@ export default function RecipesPage() {
                   onChange={handleFinishedGoodSelect}
                   placeholder="Select finished good"
                   allowCreate
-                  onCreateNew={() => setShowQuickAddModal(true)}
+                  onCreateNew={() => { setQuickAddError(null); setShowQuickAddModal(true); }}
                   createLabel="+ Create new finished good"
                 />
               </div>
@@ -634,6 +660,7 @@ export default function RecipesPage() {
                       allowCreate
                       onCreateNew={() => {
                         setQuickAddIngredientRowIndex(index);
+                        setQuickAddIngredientError(null);
                         setShowQuickAddIngredientModal(true);
                       }}
                       createLabel="+ Add new ingredient"
@@ -708,6 +735,7 @@ export default function RecipesPage() {
             setShowQuickAddIngredientModal(false);
             setQuickAddIngredientForm({ name: "", unit: "g", currentStock: 0 });
             setQuickAddIngredientRowIndex(null);
+            setQuickAddIngredientError(null);
           }}
         >
           <div
@@ -774,6 +802,11 @@ export default function RecipesPage() {
 
             </div>
 
+            {/* Inline error */}
+            {quickAddIngredientError && (
+              <p className="text-sm text-rose-600 mt-3">{quickAddIngredientError}</p>
+            )}
+
             {/* Actions */}
             <div className="flex justify-end gap-3 mt-6">
               <button
@@ -782,6 +815,7 @@ export default function RecipesPage() {
                   setShowQuickAddIngredientModal(false);
                   setQuickAddIngredientForm({ name: "", unit: "g", currentStock: 0 });
                   setQuickAddIngredientRowIndex(null);
+                  setQuickAddIngredientError(null);
                 }}
                 className="px-4 py-2 rounded-md text-sm font-medium text-stone-600 hover:text-stone-800 hover:bg-stone-100 transition-colors"
               >
@@ -810,6 +844,7 @@ export default function RecipesPage() {
           onClick={() => {
             setShowQuickAddModal(false);
             setQuickAddForm({ name: "", unit: "units" });
+            setQuickAddError(null);
           }}
         >
           {/* Panel — stopPropagation prevents backdrop click from firing */}
@@ -860,6 +895,11 @@ export default function RecipesPage() {
 
             </div>
 
+            {/* Inline error */}
+            {quickAddError && (
+              <p className="text-sm text-rose-600 mt-3">{quickAddError}</p>
+            )}
+
             {/* Actions */}
             <div className="flex justify-end gap-3 mt-6">
               <button
@@ -867,6 +907,7 @@ export default function RecipesPage() {
                 onClick={() => {
                   setShowQuickAddModal(false);
                   setQuickAddForm({ name: "", unit: "units" });
+                  setQuickAddError(null);
                 }}
                 className="px-4 py-2 rounded-md text-sm font-medium text-stone-600 hover:text-stone-800 hover:bg-stone-100 transition-colors"
               >

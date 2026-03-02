@@ -18,6 +18,7 @@ export default function FinishedGoodsPage() {
 
   const [formData, setFormData] = useState({
     name: "",
+    sku: "",             // optional — e.g. BREAD-SD-001
     unit: "units",       // sensible default for finished goods (loaves, cookies, etc.)
     currentStock: "",
     lowStockThreshold: "",
@@ -47,6 +48,7 @@ export default function FinishedGoodsPage() {
     setEditingId(item.id);
     setEditFormData({
       name: item.name,
+      sku: item.sku || "",
       unit: item.unit,
       currentStock: item.currentStock,
       lowStockThreshold: item.lowStockThreshold,
@@ -82,6 +84,7 @@ export default function FinishedGoodsPage() {
 
       await updateFinishedGood(id, {
         name: editFormData.name.trim(),
+        sku: editFormData.sku?.trim() || "",
         unit: editFormData.unit,
         currentStock: parseFloat(editFormData.currentStock) || 0,
         lowStockThreshold: parseFloat(editFormData.lowStockThreshold) || 0,
@@ -141,19 +144,44 @@ export default function FinishedGoodsPage() {
       return;
     }
 
+    // Duplicate name check — case-insensitive, trimmed.
+    // editingId is null during add, so this only runs against the full list.
+    const trimmedName = formData.name.trim().toLowerCase();
+    const nameTaken = finishedGoods.some(
+      (fg) => fg.name.trim().toLowerCase() === trimmedName
+    );
+    if (nameTaken) {
+      setError(`A finished good named "${formData.name.trim()}" already exists.`);
+      return;
+    }
+
+    // Duplicate SKU check — only runs when a SKU was actually entered.
+    // The `fg.sku &&` guard skips old records that don't have the field yet.
+    const trimmedSku = formData.sku.trim();
+    if (trimmedSku) {
+      const skuTaken = finishedGoods.some(
+        (fg) => fg.sku && fg.sku.trim().toLowerCase() === trimmedSku.toLowerCase()
+      );
+      if (skuTaken) {
+        setError(`A finished good with SKU "${trimmedSku}" already exists.`);
+        return;
+      }
+    }
+
     setError(null);
     setSubmitting(true);
 
     try {
       await addFinishedGood({
         name: formData.name.trim(),
+        sku: formData.sku.trim(),
         unit: formData.unit,
         currentStock: parseFloat(formData.currentStock) || 0,
         lowStockThreshold: parseFloat(formData.lowStockThreshold) || 0,
         price: parseFloat(formData.price) || 0,
       });
 
-      setFormData({ name: "", unit: "units", currentStock: "", lowStockThreshold: "", price: "" });
+      setFormData({ name: "", sku: "", unit: "units", currentStock: "", lowStockThreshold: "", price: "" });
 
       const updatedList = await getFinishedGoods();
       setFinishedGoods(updatedList);
@@ -223,6 +251,21 @@ export default function FinishedGoodsPage() {
                           onChange={handleEditChange}
                           className="w-full rounded border border-stone-300 px-2 py-1 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
                         />
+                        {/* SKU — optional, stacked below the name input in edit mode */}
+                        <div className="mt-2">
+                          <label className="block text-xs text-stone-500 mb-1">
+                            SKU <span className="text-stone-400">(optional)</span>
+                          </label>
+                          <input
+                            name="sku"
+                            type="text"
+                            value={editFormData.sku ?? ""}
+                            onChange={handleEditChange}
+                            placeholder="e.g. BREAD-SD-001"
+                            className="w-full rounded border border-stone-300 px-2 py-1 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                          />
+                        </div>
+
                         {/* Day-old link — only shown in edit mode, stacked below the name input */}
                         <div className="mt-2">
                           <label className="block text-xs text-stone-500 mb-1">
@@ -316,6 +359,10 @@ export default function FinishedGoodsPage() {
                   <tr key={item.id} className={isLow ? "bg-rose-50" : "hover:bg-stone-50"}>
                     <td className="px-4 py-3">
                       <div className="font-medium text-stone-800">{item.name}</div>
+                      {/* SKU — shown as a muted label under the name when set */}
+                      {item.sku && (
+                        <div className="text-xs text-stone-400 mt-0.5">SKU: {item.sku}</div>
+                      )}
                       {/* Show the linked day-old product as a muted hint below the name */}
                       {item.dayOldFinishedGoodName && (
                         <div className="text-xs text-stone-400 mt-0.5">
@@ -370,7 +417,7 @@ export default function FinishedGoodsPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* Name and Unit */}
+          {/* Name and SKU */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-stone-700 mb-1">
@@ -387,6 +434,24 @@ export default function FinishedGoodsPage() {
               />
             </div>
 
+            <div>
+              <label htmlFor="sku" className="block text-sm font-medium text-stone-700 mb-1">
+                SKU <span className="text-stone-500 font-normal">(optional)</span>
+              </label>
+              <input
+                id="sku"
+                name="sku"
+                type="text"
+                value={formData.sku}
+                onChange={handleChange}
+                placeholder="e.g. BREAD-SD-001"
+                className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          {/* Unit */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="unit" className="block text-sm font-medium text-stone-700 mb-1">
                 Unit

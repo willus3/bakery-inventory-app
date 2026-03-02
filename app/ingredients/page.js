@@ -23,6 +23,7 @@ export default function IngredientsPage() {
   // four separate useState calls) lets us handle all fields with one function.
   const [formData, setFormData] = useState({
     name: "",
+    supplierCode: "",    // optional — e.g. GFS-FLOUR-APF
     unit: "lbs",         // default to the most common unit
     currentStock: "",
     lowStockThreshold: "",
@@ -70,6 +71,7 @@ export default function IngredientsPage() {
     setEditingId(item.id);
     setEditFormData({
       name: item.name,
+      supplierCode: item.supplierCode || "",
       unit: item.unit,
       currentStock: item.currentStock,
       lowStockThreshold: item.lowStockThreshold,
@@ -96,6 +98,7 @@ export default function IngredientsPage() {
     try {
       await updateIngredient(id, {
         name: editFormData.name.trim(),
+        supplierCode: editFormData.supplierCode?.trim() || "",
         unit: editFormData.unit,
         // Convert string inputs back to numbers, fall back to 0 if empty
         currentStock: parseFloat(editFormData.currentStock) || 0,
@@ -170,6 +173,16 @@ export default function IngredientsPage() {
       return;
     }
 
+    // Duplicate name check — case-insensitive, trimmed.
+    const trimmedName = formData.name.trim().toLowerCase();
+    const nameTaken = ingredients.some(
+      (ing) => ing.name.trim().toLowerCase() === trimmedName
+    );
+    if (nameTaken) {
+      setError(`An ingredient named "${formData.name.trim()}" already exists.`);
+      return;
+    }
+
     // Clear any previous error and signal that saving has started.
     setError(null);
     setSubmitting(true);
@@ -180,13 +193,14 @@ export default function IngredientsPage() {
       // If the field was left empty, parseFloat returns NaN, so we fall back to 0.
       await addIngredient({
         name: formData.name.trim(),
+        supplierCode: formData.supplierCode.trim(),
         unit: formData.unit,
         currentStock: parseFloat(formData.currentStock) || 0,
         lowStockThreshold: parseFloat(formData.lowStockThreshold) || 0,
       });
 
       // Reset the form back to its initial empty state.
-      setFormData({ name: "", unit: "lbs", currentStock: "", lowStockThreshold: "" });
+      setFormData({ name: "", supplierCode: "", unit: "lbs", currentStock: "", lowStockThreshold: "" });
 
       // Re-fetch the full list from Firestore so the new ingredient appears
       // in the table immediately without a full page reload.
@@ -266,6 +280,20 @@ export default function IngredientsPage() {
                           onChange={handleEditChange}
                           className="w-full rounded border border-stone-300 px-2 py-1 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
                         />
+                        {/* Supplier Code — optional, stacked below the name input in edit mode */}
+                        <div className="mt-2">
+                          <label className="block text-xs text-stone-500 mb-1">
+                            Supplier Code <span className="text-stone-400">(optional)</span>
+                          </label>
+                          <input
+                            name="supplierCode"
+                            type="text"
+                            value={editFormData.supplierCode ?? ""}
+                            onChange={handleEditChange}
+                            placeholder="e.g. GFS-FLOUR-APF"
+                            className="w-full rounded border border-stone-300 px-2 py-1 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                          />
+                        </div>
                       </td>
                       <td className="px-4 py-2">
                         <select
@@ -324,7 +352,13 @@ export default function IngredientsPage() {
                 // now also render an Edit button in the Actions column.
                 return (
                   <tr key={item.id} className={isLow ? "bg-rose-50" : "hover:bg-stone-50"}>
-                    <td className="px-4 py-3 font-medium text-stone-800">{item.name}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-stone-800">{item.name}</div>
+                      {/* Supplier code — shown as a muted label under the name when set */}
+                      {item.supplierCode && (
+                        <div className="text-xs text-stone-400 mt-0.5">Code: {item.supplierCode}</div>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-stone-500">{item.unit}</td>
                     <td className="px-4 py-3">
                       <span className={isLow ? "text-rose-700 font-semibold" : "text-stone-700"}>
@@ -370,7 +404,7 @@ export default function IngredientsPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* Name and Unit on the same row — they're related and short */}
+          {/* Name and Supplier Code on the same row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
             {/* Name field — required */}
@@ -389,7 +423,25 @@ export default function IngredientsPage() {
               />
             </div>
 
-            {/* Unit dropdown */}
+            {/* Supplier Code — optional */}
+            <div>
+              <label htmlFor="supplierCode" className="block text-sm font-medium text-stone-700 mb-1">
+                Supplier Code <span className="text-stone-500 font-normal">(optional)</span>
+              </label>
+              <input
+                id="supplierCode"
+                name="supplierCode"
+                type="text"
+                value={formData.supplierCode}
+                onChange={handleChange}
+                placeholder="e.g. GFS-FLOUR-APF"
+                className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          {/* Unit — half-width on its own row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="unit" className="block text-sm font-medium text-stone-700 mb-1">
                 Unit
