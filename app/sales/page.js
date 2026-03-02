@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getFinishedGoods, getSalesRecords, addSaleRecord } from "@/lib/firestore";
+import SearchableSelect from "@/components/SearchableSelect";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sales page
@@ -198,19 +199,14 @@ export default function SalesPage() {
             <label className="block text-sm font-medium text-stone-700 mb-1">
               Finished Good
             </label>
-            <select
-              value={formData.finishedGoodId}
-              onChange={(e) => handleGoodSelect(e.target.value)}
-              required
-              className="w-full sm:w-72 rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
-            >
-              <option value="">Select a finished good…</option>
-              {finishedGoods.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
+            <div className="w-full sm:w-72">
+              <SearchableSelect
+                options={finishedGoods.map((g) => ({ value: g.id, label: g.name }))}
+                value={formData.finishedGoodId}
+                onChange={handleGoodSelect}
+                placeholder="Select a finished good…"
+              />
+            </div>
 
             {/* Show current stock once a good is selected */}
             {selectedGood && (

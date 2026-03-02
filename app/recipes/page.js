@@ -11,6 +11,7 @@ import {
   addIngredient,
 } from "@/lib/firestore";
 import { getIngredients, getFinishedGoods } from "@/lib/firestore";
+import SearchableSelect from "@/components/SearchableSelect";
 
 // Full unit list — used for yield unit and ingredient unit dropdowns.
 const UNIT_OPTIONS = ["g", "kg", "oz", "lbs", "ml", "L", "cups", "units", "dozen", "trays"];
@@ -181,22 +182,15 @@ export default function RecipesPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handles the finished good dropdown specifically.
-  // We need to store both the ID and the display name. The name gets written
-  // into the recipe document so that recipe history stays readable even if
-  // the finished good is later renamed.
-  // If the user picks the sentinel value "__create_new__", open the quick-add
-  // modal instead of updating formData — the sentinel never sticks as a value.
-  const handleFinishedGoodSelect = (e) => {
-    const selectedId = e.target.value;
-    if (selectedId === "__create_new__") {
-      setShowQuickAddModal(true);
-      return;
-    }
-    const selectedItem = finishedGoods.find((fg) => fg.id === selectedId);
+  // Handles the finished good dropdown.
+  // Stores both the ID and the display name — the name is written into the
+  // recipe document so history stays readable if the good is later renamed.
+  // The sentinel "create new" path is handled by SearchableSelect's onCreateNew.
+  const handleFinishedGoodSelect = (val) => {
+    const selectedItem = finishedGoods.find((fg) => fg.id === val);
     setFormData((prev) => ({
       ...prev,
-      finishedGoodId:   selectedId,
+      finishedGoodId:   val,
       finishedGoodName: selectedItem ? selectedItem.name : "",
     }));
   };
@@ -265,14 +259,8 @@ export default function RecipesPage() {
   // Handles the ingredient dropdown — a special case because selecting an
   // ingredient must update THREE fields at once: ingredientId, ingredientName,
   // and unit (auto-filled from the ingredient's own stored unit to reduce errors).
-  // If the user picks the sentinel value "__create_ingredient__", open the
-  // quick-add modal instead — the sentinel never sticks as a row value.
+  // The sentinel "add new" path is handled by SearchableSelect's onCreateNew.
   const handleIngredientSelect = (index, selectedId) => {
-    if (selectedId === "__create_ingredient__") {
-      setQuickAddIngredientRowIndex(index);
-      setShowQuickAddIngredientModal(true);
-      return;
-    }
     const selectedItem = ingredients.find((ing) => ing.id === selectedId);
     setIngredientRows((prev) =>
       prev.map((row, i) => {
@@ -571,19 +559,15 @@ export default function RecipesPage() {
                 <label htmlFor="finishedGoodId" className="block text-sm font-medium text-stone-700 mb-1">
                   Finished Good <span className="text-rose-500">*</span>
                 </label>
-                <select
-                  id="finishedGoodId" name="finishedGoodId"
+                <SearchableSelect
+                  options={finishedGoods.map((fg) => ({ value: fg.id, label: fg.name }))}
                   value={formData.finishedGoodId}
                   onChange={handleFinishedGoodSelect}
-                  className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
-                >
-                  <option value="">Select finished good</option>
-                  {finishedGoods.map((fg) => (
-                    <option key={fg.id} value={fg.id}>{fg.name}</option>
-                  ))}
-                  <option disabled>──────────</option>
-                  <option value="__create_new__">+ Create new finished good</option>
-                </select>
+                  placeholder="Select finished good"
+                  allowCreate
+                  onCreateNew={() => setShowQuickAddModal(true)}
+                  createLabel="+ Create new finished good"
+                />
               </div>
 
               {/* Yield quantity */}
@@ -642,18 +626,18 @@ export default function RecipesPage() {
                     className="grid grid-cols-[1fr_100px_100px_auto] gap-2 items-center"
                   >
                     {/* Ingredient dropdown */}
-                    <select
+                    <SearchableSelect
+                      options={ingredients.map((ing) => ({ value: ing.id, label: ing.name }))}
                       value={row.ingredientId}
-                      onChange={(e) => handleIngredientSelect(index, e.target.value)}
-                      className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
-                    >
-                      <option value="">Select ingredient</option>
-                      {ingredients.map((ing) => (
-                        <option key={ing.id} value={ing.id}>{ing.name}</option>
-                      ))}
-                      <option disabled>──────────</option>
-                      <option value="__create_ingredient__">+ Add new ingredient</option>
-                    </select>
+                      onChange={(val) => handleIngredientSelect(index, val)}
+                      placeholder="Select ingredient"
+                      allowCreate
+                      onCreateNew={() => {
+                        setQuickAddIngredientRowIndex(index);
+                        setShowQuickAddIngredientModal(true);
+                      }}
+                      createLabel="+ Add new ingredient"
+                    />
 
                     {/* Quantity */}
                     <input

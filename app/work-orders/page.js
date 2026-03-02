@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import SearchableSelect from "@/components/SearchableSelect";
 import {
   getRecipes,
   getIngredients,
@@ -255,8 +256,8 @@ export default function WorkOrdersPage() {
   // Recipe dropdown gets its own handler because selecting a recipe implicitly
   // drives which ingredient check list is shown — we store only the ID and
   // derive everything else.
-  const handleRecipeSelect = (e) => {
-    setFormData((prev) => ({ ...prev, recipeId: e.target.value }));
+  const handleRecipeSelect = (val) => {
+    setFormData((prev) => ({ ...prev, recipeId: val }));
   };
 
   // ── Edit handlers ────────────────────────────────────────────────────────
@@ -951,18 +952,12 @@ export default function WorkOrdersPage() {
                   <label htmlFor="recipeId" className="block text-sm font-medium text-stone-700 mb-1">
                     Recipe <span className="text-rose-500">*</span>
                   </label>
-                  <select
-                    id="recipeId"
-                    name="recipeId"
+                  <SearchableSelect
+                    options={recipes.map((r) => ({ value: r.id, label: r.name }))}
                     value={formData.recipeId}
                     onChange={handleRecipeSelect}
-                    className={inputCls}
-                  >
-                    <option value="">Select a recipe</option>
-                    {recipes.map((r) => (
-                      <option key={r.id} value={r.id}>{r.name}</option>
-                    ))}
-                  </select>
+                    placeholder="Select a recipe"
+                  />
                   {/* Linked finished good + yield info — shown after selection */}
                   {selectedRecipe && (
                     <p className="text-xs text-stone-500 mt-1.5">

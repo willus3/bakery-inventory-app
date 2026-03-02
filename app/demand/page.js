@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import SearchableSelect from "@/components/SearchableSelect";
 import { useAuth } from "@/context/AuthContext";
 import {
   getIngredients,
@@ -141,8 +142,8 @@ export default function DemandPage() {
   // Finished good dropdown needs its own handler because selecting a new
   // finished good implicitly changes which recipe and stock level are shown.
   // We only store the ID here — selectedGood and selectedRecipe are derived.
-  const handleFinishedGoodSelect = (e) => {
-    setFormData((prev) => ({ ...prev, finishedGoodId: e.target.value }));
+  const handleFinishedGoodSelect = (val) => {
+    setFormData((prev) => ({ ...prev, finishedGoodId: val }));
   };
 
   // Validates the form, builds the snapshot object, and writes to Firestore.
@@ -390,18 +391,12 @@ export default function DemandPage() {
               <label htmlFor="finishedGoodId" className="block text-sm font-medium text-stone-700 mb-1">
                 Finished Good <span className="text-rose-500">*</span>
               </label>
-              <select
-                id="finishedGoodId"
-                name="finishedGoodId"
+              <SearchableSelect
+                options={finishedGoods.map((fg) => ({ value: fg.id, label: fg.name }))}
                 value={formData.finishedGoodId}
                 onChange={handleFinishedGoodSelect}
-                className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
-              >
-                <option value="">Select a finished good</option>
-                {finishedGoods.map((fg) => (
-                  <option key={fg.id} value={fg.id}>{fg.name}</option>
-                ))}
-              </select>
+                placeholder="Select a finished good"
+              />
 
               {/* Recipe info — appears after a finished good is selected.
                   No "In stock" shown here because MTO always produces to order. */}
