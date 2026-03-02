@@ -8,6 +8,7 @@ import {
   updateRecipe,
   archiveRecipe,
   addFinishedGood,
+  addIngredient,
 } from "@/lib/firestore";
 import { getIngredients, getFinishedGoods } from "@/lib/firestore";
 
@@ -71,6 +72,14 @@ export default function RecipesPage() {
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
   const [quickAddForm,      setQuickAddForm]      = useState({ name: "", unit: "units" });
   const [quickAddSaving,    setQuickAddSaving]    = useState(false);
+
+  // ─── Quick-add ingredient modal ───────────────────────────────────────────
+  // quickAddIngredientRowIndex tracks which row triggered the modal so the
+  // new ingredient gets selected in the correct row after creation.
+  const [showQuickAddIngredientModal, setShowQuickAddIngredientModal] = useState(false);
+  const [quickAddIngredientForm,      setQuickAddIngredientForm]      = useState({ name: "", unit: "g", currentStock: 0 });
+  const [quickAddIngredientSaving,    setQuickAddIngredientSaving]    = useState(false);
+  const [quickAddIngredientRowIndex,  setQuickAddIngredientRowIndex]  = useState(null);
 
   // ─── Initial data fetch ──────────────────────────────────────────────────
   // Fetch all three collections in parallel. Recipes is the primary data;
@@ -256,7 +265,14 @@ export default function RecipesPage() {
   // Handles the ingredient dropdown — a special case because selecting an
   // ingredient must update THREE fields at once: ingredientId, ingredientName,
   // and unit (auto-filled from the ingredient's own stored unit to reduce errors).
+  // If the user picks the sentinel value "__create_ingredient__", open the
+  // quick-add modal instead — the sentinel never sticks as a row value.
   const handleIngredientSelect = (index, selectedId) => {
+    if (selectedId === "__create_ingredient__") {
+      setQuickAddIngredientRowIndex(index);
+      setShowQuickAddIngredientModal(true);
+      return;
+    }
     const selectedItem = ingredients.find((ing) => ing.id === selectedId);
     setIngredientRows((prev) =>
       prev.map((row, i) => {
@@ -272,6 +288,44 @@ export default function RecipesPage() {
         };
       })
     );
+  };
+
+  // Creates a new ingredient from the quick-add modal, re-fetches the
+  // ingredients list, and auto-selects the new item in the triggering row.
+  const handleQuickAddIngredientCreate = async () => {
+    if (!quickAddIngredientForm.name.trim()) return;
+    setQuickAddIngredientSaving(true);
+    try {
+      const docRef = await addIngredient({
+        name:              quickAddIngredientForm.name.trim(),
+        unit:              quickAddIngredientForm.unit,
+        currentStock:      parseFloat(quickAddIngredientForm.currentStock) || 0,
+        lowStockThreshold: 0,
+      });
+      // Re-fetch so the new item appears in all ingredient dropdowns.
+      const updatedIngredients = await getIngredients();
+      setIngredients(updatedIngredients);
+      // Auto-select the new ingredient in the row that triggered the modal.
+      setIngredientRows((prev) =>
+        prev.map((row, i) => {
+          if (i !== quickAddIngredientRowIndex) return row;
+          return {
+            ...row,
+            ingredientId:   docRef.id,
+            ingredientName: quickAddIngredientForm.name.trim(),
+            unit:           quickAddIngredientForm.unit,
+          };
+        })
+      );
+      // Close and reset the modal.
+      setShowQuickAddIngredientModal(false);
+      setQuickAddIngredientForm({ name: "", unit: "g", currentStock: 0 });
+      setQuickAddIngredientRowIndex(null);
+    } catch (err) {
+      console.error("Failed to create ingredient:", err);
+    } finally {
+      setQuickAddIngredientSaving(false);
+    }
   };
 
   // ─── Form submit handler ─────────────────────────────────────────────────
@@ -597,6 +651,8 @@ export default function RecipesPage() {
                       {ingredients.map((ing) => (
                         <option key={ing.id} value={ing.id}>{ing.name}</option>
                       ))}
+                      <option disabled>──────────</option>
+                      <option value="__create_ingredient__">+ Add new ingredient</option>
                     </select>
 
                     {/* Quantity */}
@@ -657,6 +713,107 @@ export default function RecipesPage() {
             </button>
 
           </form>
+        </div>
+      )}
+
+      {/* ── Quick-add ingredient modal ── */}
+      {showQuickAddIngredientModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => {
+            setShowQuickAddIngredientModal(false);
+            setQuickAddIngredientForm({ name: "", unit: "g", currentStock: 0 });
+            setQuickAddIngredientRowIndex(null);
+          }}
+        >
+          <div
+            className="bg-white rounded-lg border border-stone-200 shadow-xl w-full max-w-sm mx-4 p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-base font-semibold text-stone-800 mb-4">
+              Add Ingredient
+            </h2>
+
+            <div className="space-y-4">
+
+              {/* Name */}
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">
+                  Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={quickAddIngredientForm.name}
+                  onChange={(e) =>
+                    setQuickAddIngredientForm((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  placeholder="e.g. All-Purpose Flour"
+                  autoFocus
+                  className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                />
+              </div>
+
+              {/* Unit */}
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">
+                  Unit
+                </label>
+                <select
+                  value={quickAddIngredientForm.unit}
+                  onChange={(e) =>
+                    setQuickAddIngredientForm((prev) => ({ ...prev, unit: e.target.value }))
+                  }
+                  className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                >
+                  {UNIT_OPTIONS.map((u) => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Current Stock */}
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">
+                  Current Stock
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={quickAddIngredientForm.currentStock}
+                  onChange={(e) =>
+                    setQuickAddIngredientForm((prev) => ({ ...prev, currentStock: e.target.value }))
+                  }
+                  className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                />
+              </div>
+
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQuickAddIngredientModal(false);
+                  setQuickAddIngredientForm({ name: "", unit: "g", currentStock: 0 });
+                  setQuickAddIngredientRowIndex(null);
+                }}
+                className="px-4 py-2 rounded-md text-sm font-medium text-stone-600 hover:text-stone-800 hover:bg-stone-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleQuickAddIngredientCreate}
+                disabled={quickAddIngredientSaving || !quickAddIngredientForm.name.trim()}
+                className="px-4 py-2 rounded-md bg-amber-500 text-sm font-medium text-stone-900 hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {quickAddIngredientSaving ? "Adding..." : "Add Ingredient"}
+              </button>
+            </div>
+
+          </div>
         </div>
       )}
 
