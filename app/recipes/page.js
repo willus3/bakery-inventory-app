@@ -7,6 +7,7 @@ import {
   addRecipe,
   updateRecipe,
   archiveRecipe,
+  addFinishedGood,
 } from "@/lib/firestore";
 import { getIngredients, getFinishedGoods } from "@/lib/firestore";
 
@@ -65,6 +66,11 @@ export default function RecipesPage() {
   const [submitting,  setSubmitting]  = useState(false);
   const [error,       setError]       = useState(null);
   const [archivingId, setArchivingId] = useState(null);
+
+  // ─── Quick-add finished good modal ───────────────────────────────────────
+  const [showQuickAddModal, setShowQuickAddModal] = useState(false);
+  const [quickAddForm,      setQuickAddForm]      = useState({ name: "", unit: "units" });
+  const [quickAddSaving,    setQuickAddSaving]    = useState(false);
 
   // ─── Initial data fetch ──────────────────────────────────────────────────
   // Fetch all three collections in parallel. Recipes is the primary data;
@@ -170,14 +176,52 @@ export default function RecipesPage() {
   // We need to store both the ID and the display name. The name gets written
   // into the recipe document so that recipe history stays readable even if
   // the finished good is later renamed.
+  // If the user picks the sentinel value "__create_new__", open the quick-add
+  // modal instead of updating formData — the sentinel never sticks as a value.
   const handleFinishedGoodSelect = (e) => {
     const selectedId = e.target.value;
+    if (selectedId === "__create_new__") {
+      setShowQuickAddModal(true);
+      return;
+    }
     const selectedItem = finishedGoods.find((fg) => fg.id === selectedId);
     setFormData((prev) => ({
       ...prev,
       finishedGoodId:   selectedId,
       finishedGoodName: selectedItem ? selectedItem.name : "",
     }));
+  };
+
+  // Creates a new finished good from the quick-add modal, re-fetches the
+  // finished goods list, and auto-selects the new item in the recipe form.
+  const handleQuickAddCreate = async () => {
+    if (!quickAddForm.name.trim()) return;
+    setQuickAddSaving(true);
+    try {
+      const docRef = await addFinishedGood({
+        name:              quickAddForm.name.trim(),
+        unit:              quickAddForm.unit,
+        currentStock:      0,
+        lowStockThreshold: 0,
+        price:             "",
+      });
+      // Re-fetch so the new item appears in the dropdown.
+      const updatedGoods = await getFinishedGoods();
+      setFinishedGoods(updatedGoods);
+      // Auto-select the newly created finished good in the recipe form.
+      setFormData((prev) => ({
+        ...prev,
+        finishedGoodId:   docRef.id,
+        finishedGoodName: quickAddForm.name.trim(),
+      }));
+      // Close and reset the modal.
+      setShowQuickAddModal(false);
+      setQuickAddForm({ name: "", unit: "units" });
+    } catch (err) {
+      console.error("Failed to create finished good:", err);
+    } finally {
+      setQuickAddSaving(false);
+    }
   };
 
   // ─── Dynamic ingredient row handlers ────────────────────────────────────
@@ -483,6 +527,8 @@ export default function RecipesPage() {
                   {finishedGoods.map((fg) => (
                     <option key={fg.id} value={fg.id}>{fg.name}</option>
                   ))}
+                  <option disabled>──────────</option>
+                  <option value="__create_new__">+ Create new finished good</option>
                 </select>
               </div>
 
@@ -611,6 +657,91 @@ export default function RecipesPage() {
             </button>
 
           </form>
+        </div>
+      )}
+
+      {/* ── Quick-add finished good modal ── */}
+      {/* Rendered outside the recipe form so it sits on top of the whole page. */}
+      {showQuickAddModal && (
+        // Backdrop — clicking it cancels the modal without changing the form.
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => {
+            setShowQuickAddModal(false);
+            setQuickAddForm({ name: "", unit: "units" });
+          }}
+        >
+          {/* Panel — stopPropagation prevents backdrop click from firing */}
+          <div
+            className="bg-white rounded-lg border border-stone-200 shadow-xl w-full max-w-sm mx-4 p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-base font-semibold text-stone-800 mb-4">
+              Create Finished Good
+            </h2>
+
+            <div className="space-y-4">
+
+              {/* Name */}
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">
+                  Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={quickAddForm.name}
+                  onChange={(e) =>
+                    setQuickAddForm((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  placeholder="e.g. Sourdough Loaf"
+                  autoFocus
+                  className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                />
+              </div>
+
+              {/* Unit */}
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">
+                  Unit
+                </label>
+                <select
+                  value={quickAddForm.unit}
+                  onChange={(e) =>
+                    setQuickAddForm((prev) => ({ ...prev, unit: e.target.value }))
+                  }
+                  className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                >
+                  {UNIT_OPTIONS.map((u) => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
+              </div>
+
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQuickAddModal(false);
+                  setQuickAddForm({ name: "", unit: "units" });
+                }}
+                className="px-4 py-2 rounded-md text-sm font-medium text-stone-600 hover:text-stone-800 hover:bg-stone-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleQuickAddCreate}
+                disabled={quickAddSaving || !quickAddForm.name.trim()}
+                className="px-4 py-2 rounded-md bg-amber-500 text-sm font-medium text-stone-900 hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {quickAddSaving ? "Creating..." : "Create"}
+              </button>
+            </div>
+
+          </div>
         </div>
       )}
 
