@@ -151,10 +151,6 @@ export default function RecipesPage() {
     setIngredientRows(recipe.ingredients.map((ing) => ({ ...ing })));
     setError(null);
     setShowForm(true);
-    // Scroll the form into view
-    setTimeout(() => {
-      document.getElementById("recipe-form")?.scrollIntoView({ behavior: "smooth" });
-    }, 50);
   };
 
   // ─── Archive handler ─────────────────────────────────────────────────────
@@ -438,115 +434,9 @@ export default function RecipesPage() {
         )}
       </div>
 
-      {/* ── Recipe table ── */}
-      {recipes.length === 0 ? (
-        <p className="text-stone-500 text-sm">No active recipes yet. Add one below.</p>
-      ) : (
-        <div className="overflow-x-auto rounded-lg border border-stone-200">
-          <table className="w-full text-sm text-left">
-
-            <thead className="bg-stone-50 border-b border-stone-200">
-              <tr>
-                {/* Empty column for the expand chevron */}
-                <th className="w-8 px-3 py-3" />
-                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Name</th>
-                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Finished Good</th>
-                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Yield</th>
-                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Ingredients</th>
-                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-stone-100 bg-white">
-              {recipes.map((recipe) => {
-                const isExpanded = recipe.id === expandedId;
-
-                return (
-                  // React.Fragment with a key lets us return two <tr>s per recipe
-                  // without breaking the table structure with a wrapper div.
-                  <
-                      Fragment key={recipe.id}
-                  >
-                    {/* ── Summary row ── */}
-                    <tr
-                      className="hover:bg-stone-50 cursor-pointer"
-                      onClick={() => handleToggleExpand(recipe.id)}
-                    >
-                      {/* Chevron icon — rotates when expanded */}
-                      <td className="px-3 py-3">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className={`h-4 w-4 text-stone-400 transition-transform ${isExpanded ? "rotate-90" : ""}`}
-                          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                        </svg>
-                      </td>
-                      <td className="px-4 py-3 font-medium text-stone-800">{recipe.name}</td>
-                      <td className="px-4 py-3 text-stone-500">{recipe.finishedGoodName}</td>
-                      <td className="px-4 py-3 text-stone-500">
-                        {recipe.yieldQuantity} {recipe.yieldUnit}
-                      </td>
-                      <td className="px-4 py-3 text-stone-500">
-                        {recipe.ingredients.length} item{recipe.ingredients.length !== 1 ? "s" : ""}
-                      </td>
-                      <td
-                        className="px-4 py-3 flex gap-3"
-                        // Stop the row's onClick from firing when the user
-                        // clicks Edit or Archive — those have their own handlers.
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          onClick={() => handleEditStart(recipe)}
-                          disabled={archivingId === recipe.id}
-                          className="text-sm font-medium text-stone-500 hover:text-stone-800 disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleArchive(recipe.id, recipe.name)}
-                          disabled={archivingId === recipe.id}
-                          className="text-sm font-medium text-amber-700 hover:text-amber-900 disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          {archivingId === recipe.id ? "Archiving..." : "Archive"}
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* ── Expanded ingredient list row ── */}
-                    {/* Only rendered when this recipe is the expanded one.
-                        colSpan=6 makes this row span all columns so it looks
-                        like a panel attached to the row above. */}
-                    {isExpanded && (
-                      <tr key={`${recipe.id}-expanded`}>
-                        <td colSpan={6} className="px-6 py-4 bg-stone-50 border-t border-stone-100">
-                          <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">
-                            Ingredients — per batch of {recipe.yieldQuantity} {recipe.yieldUnit}
-                          </p>
-                          <ul className="space-y-1">
-                            {recipe.ingredients.map((ing, i) => (
-                              <li key={i} className="flex items-center gap-2 text-sm text-stone-700">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                                <span className="font-medium">{ing.ingredientName}</span>
-                                <span className="text-stone-500">— {ing.quantity} {ing.unit}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-
-          </table>
-        </div>
-      )}
-
       {/* ── Add / Edit Recipe form ── */}
       {showForm && (
-        <div id="recipe-form" className="border-t border-stone-200 pt-8">
+        <div className="rounded-lg border border-stone-200 p-6">
 
           {/* Form header */}
           <div className="flex items-center justify-between mb-6">
@@ -724,6 +614,112 @@ export default function RecipesPage() {
             </button>
 
           </form>
+        </div>
+      )}
+
+      {/* ── Recipe table ── */}
+      {recipes.length === 0 ? (
+        <p className="text-stone-500 text-sm">No active recipes yet. Add one above.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-stone-200">
+          <table className="w-full text-sm text-left">
+
+            <thead className="bg-stone-50 border-b border-stone-200">
+              <tr>
+                {/* Empty column for the expand chevron */}
+                <th className="w-8 px-3 py-3" />
+                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Name</th>
+                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Finished Good</th>
+                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Yield</th>
+                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Ingredients</th>
+                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-stone-100 bg-white">
+              {recipes.map((recipe) => {
+                const isExpanded = recipe.id === expandedId;
+
+                return (
+                  // React.Fragment with a key lets us return two <tr>s per recipe
+                  // without breaking the table structure with a wrapper div.
+                  <
+                      Fragment key={recipe.id}
+                  >
+                    {/* ── Summary row ── */}
+                    <tr
+                      className="hover:bg-stone-50 cursor-pointer"
+                      onClick={() => handleToggleExpand(recipe.id)}
+                    >
+                      {/* Chevron icon — rotates when expanded */}
+                      <td className="px-3 py-3">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className={`h-4 w-4 text-stone-400 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </td>
+                      <td className="px-4 py-3 font-medium text-stone-800">{recipe.name}</td>
+                      <td className="px-4 py-3 text-stone-500">{recipe.finishedGoodName}</td>
+                      <td className="px-4 py-3 text-stone-500">
+                        {recipe.yieldQuantity} {recipe.yieldUnit}
+                      </td>
+                      <td className="px-4 py-3 text-stone-500">
+                        {recipe.ingredients.length} item{recipe.ingredients.length !== 1 ? "s" : ""}
+                      </td>
+                      <td
+                        className="px-4 py-3 flex gap-3"
+                        // Stop the row's onClick from firing when the user
+                        // clicks Edit or Archive — those have their own handlers.
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          onClick={() => handleEditStart(recipe)}
+                          disabled={archivingId === recipe.id}
+                          className="text-sm font-medium text-stone-500 hover:text-stone-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleArchive(recipe.id, recipe.name)}
+                          disabled={archivingId === recipe.id}
+                          className="text-sm font-medium text-amber-700 hover:text-amber-900 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {archivingId === recipe.id ? "Archiving..." : "Archive"}
+                        </button>
+                      </td>
+                    </tr>
+
+                    {/* ── Expanded ingredient list row ── */}
+                    {/* Only rendered when this recipe is the expanded one.
+                        colSpan=6 makes this row span all columns so it looks
+                        like a panel attached to the row above. */}
+                    {isExpanded && (
+                      <tr key={`${recipe.id}-expanded`}>
+                        <td colSpan={6} className="px-6 py-4 bg-stone-50 border-t border-stone-100">
+                          <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">
+                            Ingredients — per batch of {recipe.yieldQuantity} {recipe.yieldUnit}
+                          </p>
+                          <ul className="space-y-1">
+                            {recipe.ingredients.map((ing, i) => (
+                              <li key={i} className="flex items-center gap-2 text-sm text-stone-700">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                                <span className="font-medium">{ing.ingredientName}</span>
+                                <span className="text-stone-500">— {ing.quantity} {ing.unit}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+
+          </table>
         </div>
       )}
 
