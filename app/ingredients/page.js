@@ -50,9 +50,8 @@ export default function IngredientsPage() {
   // Seeded from the item's current data when Edit is clicked.
   const [editFormData, setEditFormData] = useState({});
 
-  // Controls whether the Add Ingredient collapsible panel is open.
-  // Starts closed so the table is the first thing the user sees.
-  const [addFormOpen, setAddFormOpen] = useState(false);
+  // Controls whether the Add Ingredient form is visible.
+  const [showForm, setShowForm] = useState(false);
 
   // ─── Initial data fetch ──────────────────────────────────────────────────
   // Runs once when the component first mounts. Fetches all ingredients and
@@ -164,6 +163,19 @@ export default function IngredientsPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Opens the add form with a clean empty state.
+  const handleNewIngredient = () => {
+    setError(null);
+    setShowForm(true);
+  };
+
+  // Closes and resets the add form without saving.
+  const handleCancelForm = () => {
+    setShowForm(false);
+    setFormData({ name: "", supplierCode: "", unit: "lbs", currentStock: "", lowStockThreshold: "" });
+    setError(null);
+  };
+
   // ─── Form submit handler ─────────────────────────────────────────────────
   // Validates the form, writes to Firestore, refreshes the list, and resets the form.
   const handleSubmit = async (e) => {
@@ -203,8 +215,9 @@ export default function IngredientsPage() {
         lowStockThreshold: parseFloat(formData.lowStockThreshold) || 0,
       });
 
-      // Reset the form back to its initial empty state.
+      // Reset the form back to its initial empty state and close it.
       setFormData({ name: "", supplierCode: "", unit: "lbs", currentStock: "", lowStockThreshold: "" });
+      setShowForm(false);
 
       // Re-fetch the full list from Firestore so the new ingredient appears
       // in the table immediately without a full page reload.
@@ -240,150 +253,145 @@ export default function IngredientsPage() {
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-10">
 
       {/* ── Page header ── */}
-      <div>
-        <h1 className="text-2xl font-semibold text-stone-800">Ingredients</h1>
-        <p className="text-sm text-stone-500 mt-1">
-          {ingredients.length} ingredient{ingredients.length !== 1 ? "s" : ""} total
-        </p>
-      </div>
-
-      {/* ── Collapsible Add Ingredient form ── */}
-      <div className="rounded-lg border border-stone-200">
-
-        {/* Header bar — always visible; clicking toggles the form open/closed */}
-        <button
-          type="button"
-          onClick={() => setAddFormOpen((prev) => !prev)}
-          className="flex items-center justify-between w-full px-4 py-3 text-left rounded-lg bg-stone-50 hover:bg-stone-100 transition-colors"
-        >
-          <span className="text-sm font-semibold text-stone-700">Add Ingredient</span>
-          {/* Chevron rotates 90° when open */}
-          <svg
-            className={`h-4 w-4 text-stone-400 transition-transform duration-200 ${addFormOpen ? "rotate-90" : ""}`}
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            aria-hidden="true"
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-stone-800">Ingredients</h1>
+          <p className="text-sm text-stone-500 mt-1">
+            {ingredients.length} ingredient{ingredients.length !== 1 ? "s" : ""} total
+          </p>
+        </div>
+        {!showForm && (
+          <button
+            onClick={handleNewIngredient}
+            className="rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-stone-900 hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 transition-colors"
           >
-            <path
-              fillRule="evenodd"
-              d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </button>
-
-        {/* Form body — only rendered when addFormOpen is true */}
-        {addFormOpen && (
-          <div className="border-t border-stone-200 p-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
-
-              {/* Name and Supplier Code on the same row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-stone-700 mb-1">
-                    Name <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    id="name"
-                    name="name"
-                    type="text"
-                    value={formData.name}
-                    onChange={handleChange}
-                    placeholder="e.g. All-Purpose Flour"
-                    className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="supplierCode" className="block text-sm font-medium text-stone-700 mb-1">
-                    Supplier Code <span className="text-stone-500 font-normal">(optional)</span>
-                  </label>
-                  <input
-                    id="supplierCode"
-                    name="supplierCode"
-                    type="text"
-                    value={formData.supplierCode}
-                    onChange={handleChange}
-                    placeholder="e.g. GFS-FLOUR-APF"
-                    className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
-                  />
-                </div>
-              </div>
-
-              {/* Unit — half-width on its own row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="unit" className="block text-sm font-medium text-stone-700 mb-1">
-                    Unit
-                  </label>
-                  <select
-                    id="unit"
-                    name="unit"
-                    value={formData.unit}
-                    onChange={handleChange}
-                    className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
-                  >
-                    {UNIT_OPTIONS.map((option) => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Stock numbers on the same row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="currentStock" className="block text-sm font-medium text-stone-700 mb-1">
-                    Current Stock
-                  </label>
-                  <input
-                    id="currentStock"
-                    name="currentStock"
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={formData.currentStock}
-                    onChange={handleChange}
-                    placeholder="0"
-                    className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="lowStockThreshold" className="block text-sm font-medium text-stone-700 mb-1">
-                    Low Stock Alert At
-                  </label>
-                  <input
-                    id="lowStockThreshold"
-                    name="lowStockThreshold"
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={formData.lowStockThreshold}
-                    onChange={handleChange}
-                    placeholder="0"
-                    className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
-                  />
-                </div>
-              </div>
-
-              {/* Error message — only rendered when error is not null */}
-              {error && (
-                <p className="text-sm text-rose-600">{error}</p>
-              )}
-
-              {/* Submit button */}
-              <button
-                type="submit"
-                disabled={submitting}
-                className="rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-stone-900 hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {submitting ? "Adding..." : "Add Ingredient"}
-              </button>
-
-            </form>
-          </div>
+            Add New Ingredient
+          </button>
         )}
-
       </div>
+
+      {/* ── Add Ingredient form ── */}
+      {showForm && (
+        <div className="rounded-lg border border-stone-200 p-6">
+
+          {/* Form header */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-stone-800">New Ingredient</h2>
+            <button
+              onClick={handleCancelForm}
+              className="text-sm text-stone-500 hover:text-stone-800"
+            >
+              Cancel
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+
+            {/* Name and Supplier Code on the same row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-stone-700 mb-1">
+                  Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="e.g. All-Purpose Flour"
+                  className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label htmlFor="supplierCode" className="block text-sm font-medium text-stone-700 mb-1">
+                  Supplier Code <span className="text-stone-500 font-normal">(optional)</span>
+                </label>
+                <input
+                  id="supplierCode"
+                  name="supplierCode"
+                  type="text"
+                  value={formData.supplierCode}
+                  onChange={handleChange}
+                  placeholder="e.g. GFS-FLOUR-APF"
+                  className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            {/* Unit — half-width on its own row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="unit" className="block text-sm font-medium text-stone-700 mb-1">
+                  Unit
+                </label>
+                <select
+                  id="unit"
+                  name="unit"
+                  value={formData.unit}
+                  onChange={handleChange}
+                  className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                >
+                  {UNIT_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Stock numbers on the same row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="currentStock" className="block text-sm font-medium text-stone-700 mb-1">
+                  Current Stock
+                </label>
+                <input
+                  id="currentStock"
+                  name="currentStock"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={formData.currentStock}
+                  onChange={handleChange}
+                  placeholder="0"
+                  className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label htmlFor="lowStockThreshold" className="block text-sm font-medium text-stone-700 mb-1">
+                  Low Stock Alert At
+                </label>
+                <input
+                  id="lowStockThreshold"
+                  name="lowStockThreshold"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={formData.lowStockThreshold}
+                  onChange={handleChange}
+                  placeholder="0"
+                  className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            {/* Error message — only rendered when error is not null */}
+            {error && (
+              <p className="text-sm text-rose-600">{error}</p>
+            )}
+
+            {/* Submit button */}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-stone-900 hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {submitting ? "Adding..." : "Add Ingredient"}
+            </button>
+
+          </form>
+        </div>
+      )}
 
       {/* ── Ingredients table (or empty message) ── */}
       {ingredients.length === 0 ? (
