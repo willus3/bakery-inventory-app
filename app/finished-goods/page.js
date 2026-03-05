@@ -31,6 +31,10 @@ export default function FinishedGoodsPage() {
   const [editingId, setEditingId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
 
+  // Controls whether the Add Finished Good collapsible panel is open.
+  // Starts closed so the table is the first thing the user sees.
+  const [addFormOpen, setAddFormOpen] = useState(false);
+
   // ─── Initial data fetch ──────────────────────────────────────────────────
   useEffect(() => {
     const fetchGoods = async () => {
@@ -216,9 +220,165 @@ export default function FinishedGoodsPage() {
         </p>
       </div>
 
+      {/* ── Collapsible Add Finished Good form ── */}
+      <div className="rounded-lg border border-stone-200">
+
+        {/* Header bar — always visible; clicking toggles the form open/closed */}
+        <button
+          type="button"
+          onClick={() => setAddFormOpen((prev) => !prev)}
+          className="flex items-center justify-between w-full px-4 py-3 text-left rounded-lg bg-stone-50 hover:bg-stone-100 transition-colors"
+        >
+          <span className="text-sm font-semibold text-stone-700">Add Finished Good</span>
+          {/* Chevron rotates 90° when open */}
+          <svg
+            className={`h-4 w-4 text-stone-400 transition-transform duration-200 ${addFormOpen ? "rotate-90" : ""}`}
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              fillRule="evenodd"
+              d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
+
+        {/* Form body — only rendered when addFormOpen is true */}
+        {addFormOpen && (
+          <div className="border-t border-stone-200 p-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
+
+              {/* Name and SKU */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-stone-700 mb-1">
+                    Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder="e.g. Sourdough Loaf"
+                    className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="sku" className="block text-sm font-medium text-stone-700 mb-1">
+                    SKU <span className="text-stone-500 font-normal">(optional)</span>
+                  </label>
+                  <input
+                    id="sku"
+                    name="sku"
+                    type="text"
+                    value={formData.sku}
+                    onChange={handleChange}
+                    placeholder="e.g. BREAD-SD-001"
+                    className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Unit */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="unit" className="block text-sm font-medium text-stone-700 mb-1">
+                    Unit
+                  </label>
+                  <select
+                    id="unit"
+                    name="unit"
+                    value={formData.unit}
+                    onChange={handleChange}
+                    className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                  >
+                    {UNIT_OPTIONS.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Stock numbers */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="currentStock" className="block text-sm font-medium text-stone-700 mb-1">
+                    Current Stock
+                  </label>
+                  <input
+                    id="currentStock"
+                    name="currentStock"
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={formData.currentStock}
+                    onChange={handleChange}
+                    placeholder="0"
+                    className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="lowStockThreshold" className="block text-sm font-medium text-stone-700 mb-1">
+                    Low Stock Alert At
+                  </label>
+                  <input
+                    id="lowStockThreshold"
+                    name="lowStockThreshold"
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={formData.lowStockThreshold}
+                    onChange={handleChange}
+                    placeholder="0"
+                    className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Price — optional, half-width */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="price" className="block text-sm font-medium text-stone-700 mb-1">
+                    Selling Price <span className="text-stone-500 font-normal">(optional)</span>
+                  </label>
+                  <input
+                    id="price"
+                    name="price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.price}
+                    onChange={handleChange}
+                    placeholder="0.00"
+                    className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <p className="text-sm text-rose-600">{error}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-stone-900 hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {submitting ? "Adding..." : "Add Finished Good"}
+              </button>
+
+            </form>
+          </div>
+        )}
+
+      </div>
+
       {/* ── Table or empty state ── */}
       {finishedGoods.length === 0 ? (
-        <p className="text-stone-500 text-sm">No finished goods yet. Add one below.</p>
+        <p className="text-stone-500 text-sm">No finished goods yet. Add one above.</p>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-stone-200">
           <table className="w-full text-sm text-left">
@@ -410,137 +570,6 @@ export default function FinishedGoodsPage() {
           </table>
         </div>
       )}
-
-      {/* ── Add Finished Good form ── */}
-      <div className="border-t border-stone-200 pt-8">
-        <h2 className="text-lg font-semibold text-stone-800 mb-4">Add Finished Good</h2>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-
-          {/* Name and SKU */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-stone-700 mb-1">
-                Name <span className="text-rose-500">*</span>
-              </label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="e.g. Sourdough Loaf"
-                className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="sku" className="block text-sm font-medium text-stone-700 mb-1">
-                SKU <span className="text-stone-500 font-normal">(optional)</span>
-              </label>
-              <input
-                id="sku"
-                name="sku"
-                type="text"
-                value={formData.sku}
-                onChange={handleChange}
-                placeholder="e.g. BREAD-SD-001"
-                className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          {/* Unit */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="unit" className="block text-sm font-medium text-stone-700 mb-1">
-                Unit
-              </label>
-              <select
-                id="unit"
-                name="unit"
-                value={formData.unit}
-                onChange={handleChange}
-                className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
-              >
-                {UNIT_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Stock numbers */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="currentStock" className="block text-sm font-medium text-stone-700 mb-1">
-                Current Stock
-              </label>
-              <input
-                id="currentStock"
-                name="currentStock"
-                type="number"
-                min="0"
-                step="any"
-                value={formData.currentStock}
-                onChange={handleChange}
-                placeholder="0"
-                className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="lowStockThreshold" className="block text-sm font-medium text-stone-700 mb-1">
-                Low Stock Alert At
-              </label>
-              <input
-                id="lowStockThreshold"
-                name="lowStockThreshold"
-                type="number"
-                min="0"
-                step="any"
-                value={formData.lowStockThreshold}
-                onChange={handleChange}
-                placeholder="0"
-                className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          {/* Price — optional, half-width */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="price" className="block text-sm font-medium text-stone-700 mb-1">
-                Selling Price <span className="text-stone-500 font-normal">(optional)</span>
-              </label>
-              <input
-                id="price"
-                name="price"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.price}
-                onChange={handleChange}
-                placeholder="0.00"
-                className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          {error && (
-            <p className="text-sm text-rose-600">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-stone-900 hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {submitting ? "Adding..." : "Add Finished Good"}
-          </button>
-
-        </form>
-      </div>
 
     </div>
   );
