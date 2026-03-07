@@ -640,6 +640,20 @@ export default function RecipesPage() {
               {recipes.map((recipe) => {
                 const isExpanded = recipe.id === expandedId;
 
+                // ── Derived cost data (used in expanded view) ──────────────────────
+                // .find() looks up each recipe ingredient in the fetched ingredients
+                // array by matching ingredientId → ingredient.id.
+                // ?. and ?? 0 guard against ingredients added before costPerUnit existed.
+                const hasCosts = recipe.ingredients.some((ing) => {
+                  const ingData = ingredients.find((i) => i.id === ing.ingredientId);
+                  return (ingData?.costPerUnit ?? 0) > 0;
+                });
+                const batchCost = recipe.ingredients.reduce((sum, ing) => {
+                  const ingData = ingredients.find((i) => i.id === ing.ingredientId);
+                  return sum + (ingData?.costPerUnit ?? 0) * ing.quantity;
+                }, 0);
+                const unitCost = batchCost / recipe.yieldQuantity;
+
                 return (
                   // React.Fragment with a key lets us return two <tr>s per recipe
                   // without breaking the table structure with a wrapper div.
@@ -711,6 +725,20 @@ export default function RecipesPage() {
                               </li>
                             ))}
                           </ul>
+
+                          {/* ── Cost summary ── */}
+                          {hasCosts ? (
+                            <p className="text-xs text-stone-500 mt-3 pt-3 border-t border-stone-200">
+                              Estimated Cost:{" "}
+                              <span className="font-medium text-stone-700">${batchCost.toFixed(2)} per batch</span>
+                              {" · "}
+                              <span className="font-medium text-stone-700">${unitCost.toFixed(2)} per {recipe.yieldUnit}</span>
+                            </p>
+                          ) : (
+                            <p className="text-xs text-stone-400 mt-3 pt-3 border-t border-stone-200">
+                              Add ingredient costs to see costing
+                            </p>
+                          )}
                         </td>
                       </tr>
                     )}

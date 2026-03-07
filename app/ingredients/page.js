@@ -27,6 +27,7 @@ export default function IngredientsPage() {
     unit: "lbs",         // default to the most common unit
     currentStock: "",
     lowStockThreshold: "",
+    costPerUnit: "",     // optional — used for recipe costing
   });
 
   // True while the addIngredient() call is in flight. Used to disable the
@@ -78,6 +79,7 @@ export default function IngredientsPage() {
       unit: item.unit,
       currentStock: item.currentStock,
       lowStockThreshold: item.lowStockThreshold,
+      costPerUnit: item.costPerUnit || "",
     });
   };
 
@@ -106,6 +108,7 @@ export default function IngredientsPage() {
         // Convert string inputs back to numbers, fall back to 0 if empty
         currentStock: parseFloat(editFormData.currentStock) || 0,
         lowStockThreshold: parseFloat(editFormData.lowStockThreshold) || 0,
+        costPerUnit: parseFloat(editFormData.costPerUnit) || 0,
       });
 
       // Re-fetch so the table reflects the saved values
@@ -172,7 +175,7 @@ export default function IngredientsPage() {
   // Closes and resets the add form without saving.
   const handleCancelForm = () => {
     setShowForm(false);
-    setFormData({ name: "", supplierCode: "", unit: "lbs", currentStock: "", lowStockThreshold: "" });
+    setFormData({ name: "", supplierCode: "", unit: "lbs", currentStock: "", lowStockThreshold: "", costPerUnit: "" });
     setError(null);
   };
 
@@ -213,10 +216,11 @@ export default function IngredientsPage() {
         unit: formData.unit,
         currentStock: parseFloat(formData.currentStock) || 0,
         lowStockThreshold: parseFloat(formData.lowStockThreshold) || 0,
+        costPerUnit: parseFloat(formData.costPerUnit) || 0,
       });
 
       // Reset the form back to its initial empty state and close it.
-      setFormData({ name: "", supplierCode: "", unit: "lbs", currentStock: "", lowStockThreshold: "" });
+      setFormData({ name: "", supplierCode: "", unit: "lbs", currentStock: "", lowStockThreshold: "", costPerUnit: "" });
       setShowForm(false);
 
       // Re-fetch the full list from Firestore so the new ingredient appears
@@ -319,7 +323,7 @@ export default function IngredientsPage() {
               </div>
             </div>
 
-            {/* Unit — half-width on its own row */}
+            {/* Unit and Cost per Unit on the same row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="unit" className="block text-sm font-medium text-stone-700 mb-1">
@@ -336,6 +340,22 @@ export default function IngredientsPage() {
                     <option key={option} value={option}>{option}</option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label htmlFor="costPerUnit" className="block text-sm font-medium text-stone-700 mb-1">
+                  Cost per Unit ($) <span className="text-stone-500 font-normal">(optional)</span>
+                </label>
+                <input
+                  id="costPerUnit"
+                  name="costPerUnit"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.costPerUnit}
+                  onChange={handleChange}
+                  placeholder="e.g. 2.50 per lb"
+                  className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                />
               </div>
             </div>
 
@@ -443,6 +463,22 @@ export default function IngredientsPage() {
                             className="w-full rounded border border-stone-300 px-2 py-1 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
                           />
                         </div>
+                        {/* Cost per Unit — optional, stacked below supplier code in edit mode */}
+                        <div className="mt-2">
+                          <label className="block text-xs text-stone-500 mb-1">
+                            Cost per Unit ($) <span className="text-stone-400">(optional)</span>
+                          </label>
+                          <input
+                            name="costPerUnit"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={editFormData.costPerUnit ?? ""}
+                            onChange={handleEditChange}
+                            placeholder="0.00"
+                            className="w-full rounded border border-stone-300 px-2 py-1 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                          />
+                        </div>
                       </td>
                       <td className="px-4 py-2">
                         <select
@@ -506,6 +542,12 @@ export default function IngredientsPage() {
                       {/* Supplier code — shown as a muted label under the name when set */}
                       {item.supplierCode && (
                         <div className="text-xs text-stone-400 mt-0.5">Code: {item.supplierCode}</div>
+                      )}
+                      {/* Cost per unit — shown as a muted label when set and greater than 0 */}
+                      {item.costPerUnit > 0 && (
+                        <div className="text-xs text-stone-400 mt-0.5">
+                          ${item.costPerUnit.toFixed(2)}/{item.unit}
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-3 text-stone-500">{item.unit}</td>

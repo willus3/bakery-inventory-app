@@ -36,6 +36,7 @@ const NAV_GROUPS = [
     key:   "business",
     links: [
       { label: "Sales",      href: "/sales"       },
+      { label: "Costing",    href: "/costing"     },
       { label: "Purchasing", href: "/purchasing"  },
       { label: "End of Day", href: "/end-of-day"  },
     ],
