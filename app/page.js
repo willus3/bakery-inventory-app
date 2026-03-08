@@ -17,8 +17,7 @@ import {
   getProductionRecords,
   getPurchaseOrders,
 } from "@/lib/firestore";
-
-const BAKERY_NAME = "Bakery MRP";
+import { useSettings } from "@/context/SettingsContext";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DATE UTILITIES
@@ -247,6 +246,8 @@ function InventoryBar({ label, healthy, total, urgency }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+
+  const { settings } = useSettings();
 
   // ─── State ─────────────────────────────────────────────────────────────────
   const [data, setData] = useState({
@@ -499,7 +500,7 @@ export default function DashboardPage() {
 
       {/* ── Page header ── */}
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-stone-800">{BAKERY_NAME}</h1>
+        <h1 className="text-2xl font-semibold text-stone-800">{settings.bakeryName}</h1>
         <p className="text-sm text-stone-500 mt-1">
           {getGreeting()}, here&apos;s your overview for {formatTodayLabel()}
         </p>

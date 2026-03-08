@@ -11,6 +11,7 @@ import {
   generateWorkOrdersForWeek,
 } from "@/lib/firestore";
 import { useAuth } from "@/context/AuthContext";
+import { useSettings } from "@/context/SettingsContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -72,6 +73,7 @@ const parseWeekQty = (qty) => {
 
 export default function WeeklyPlanPage() {
   const { user } = useAuth();
+  const { settings } = useSettings();
 
   // ─── Fetched data ─────────────────────────────────────────────────────────
   const [rows,        setRows]        = useState([]); // { finishedGoodId, finishedGoodName, recipeId, recipeName, recipeYield }
@@ -317,7 +319,8 @@ export default function WeeklyPlanPage() {
       };
 
       const { count } = await generateWorkOrdersForWeek(
-        planData, recipes, ingredients, user?.email
+        planData, recipes, ingredients, user?.email,
+        settings.defaultStartTime, settings.defaultDueTime
       );
 
       // Refresh the plans list so the duplicate-week warning stays current.

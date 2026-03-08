@@ -193,6 +193,18 @@ export default function Navbar() {
               </div>
             ))}
 
+            {/* Settings link — always visible so admins can reach it */}
+            <Link
+              href="/settings"
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                isLinkActive("/settings", pathname)
+                  ? "bg-amber-50 text-amber-700"
+                  : "text-stone-500 hover:text-stone-800 hover:bg-stone-100"
+              }`}
+            >
+              Settings
+            </Link>
+
             {/* Sign out button — only shown when a user is logged in */}
             {user && (
               <button
@@ -280,6 +292,19 @@ export default function Navbar() {
                 )}
               </div>
             ))}
+
+            {/* Mobile settings link */}
+            <Link
+              href="/settings"
+              onClick={() => setMobileOpen(false)}
+              className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                isLinkActive("/settings", pathname)
+                  ? "text-amber-700 bg-amber-50"
+                  : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+              }`}
+            >
+              Settings
+            </Link>
 
             {/* Mobile sign-out — closes the menu after signing out */}
             {user && (

@@ -2,6 +2,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { AuthProvider } from "@/context/AuthContext";
+import { SettingsProvider } from "@/context/SettingsContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
 const geistSans = Geist({
@@ -31,13 +32,18 @@ export default function RootLayout({ children }) {
         {/* AuthProvider must wrap everything so ProtectedRoute and Navbar
             can both call useAuth() to read the logged-in user. */}
         <AuthProvider>
-          <Navbar />
-          {/* ProtectedRoute checks auth on every navigation.
-              It renders children only when the user is logged in
-              (or when the current page is /login). */}
-          <ProtectedRoute>
-            {children}
-          </ProtectedRoute>
+          {/* SettingsProvider sits inside AuthProvider so it can access the
+              current user if needed later, but outside ProtectedRoute so
+              settings load in parallel with the auth check. */}
+          <SettingsProvider>
+            <Navbar />
+            {/* ProtectedRoute checks auth on every navigation.
+                It renders children only when the user is logged in
+                (or when the current page is /login). */}
+            <ProtectedRoute>
+              {children}
+            </ProtectedRoute>
+          </SettingsProvider>
         </AuthProvider>
       </body>
     </html>
