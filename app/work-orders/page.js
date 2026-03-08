@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useSettings } from "@/context/SettingsContext";
 import SearchableSelect from "@/components/SearchableSelect";
 import {
   getRecipes,
@@ -105,6 +106,7 @@ const inputCls =
 
 export default function WorkOrdersPage() {
   const { user } = useAuth();
+  const { settings } = useSettings();
 
   // ── Fetched data ─────────────────────────────────────────────────────────
   const [workOrders,  setWorkOrders]  = useState([]);
@@ -226,7 +228,15 @@ export default function WorkOrdersPage() {
     setFormMode("create");
     setEditingId(null);
     setEditingWorkOrder(null);
-    setFormData(emptyCreateFormData());
+    // Pre-fill scheduled times using today's date + the configured defaults.
+    // Without this, the datetime-local input is blank and the browser snaps
+    // to the current time when the user first clicks into the field.
+    const today = getTodayStr();
+    setFormData({
+      ...emptyCreateFormData(),
+      scheduledStart: `${today}T${settings.defaultStartTime}`,
+      dueBy:          `${today}T${settings.defaultDueTime}`,
+    });
     setError(null);
     setShowForm(true);
     setTimeout(() => {
